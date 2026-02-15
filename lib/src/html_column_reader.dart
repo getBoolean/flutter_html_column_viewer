@@ -64,36 +64,40 @@ class HtmlColumnReader extends StatelessWidget {
           itemCount: pages.length,
           itemBuilder: (context, pageIndex) {
             final pageColumns = pages[pageIndex];
-            return Padding(
-              padding: resolvedPadding,
-              child: Row(
-                children: List<Widget>.generate(columnsPerPage, (columnIndex) {
-                  final blockNodes = columnIndex < pageColumns.length
-                      ? pageColumns[columnIndex]
-                      : const <HtmlBlockNode>[];
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: columnIndex == columnsPerPage - 1
-                            ? 0
-                            : columnGap,
-                      ),
-                      child: _ColumnWidget(
-                        key: ValueKey<String>(
-                          'html-column-page-$pageIndex-col-$columnIndex',
+            return SizedBox(
+              height: viewportHeight + resolvedPadding.vertical,
+              child: Padding(
+                padding: resolvedPadding,
+                child: Row(
+                  children: List<Widget>.generate(columnsPerPage, (columnIndex) {
+                    final blockNodes = columnIndex < pageColumns.length
+                        ? pageColumns[columnIndex]
+                        : const <HtmlBlockNode>[];
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: columnIndex == columnsPerPage - 1
+                              ? 0
+                              : columnGap,
                         ),
-                        blocks: blockNodes,
-                        blockContext: HtmlBlockContext(
-                          baseStyle: baseStyle,
-                          headingStyles: headingStyles,
-                          onLinkTap: onLinkTap,
-                          imageBuilder: imageBuilder,
+                        child: _ColumnWidget(
+                          key: ValueKey<String>(
+                            'html-column-page-$pageIndex-col-$columnIndex',
+                          ),
+                          blocks: blockNodes,
+                          viewportHeight: viewportHeight,
+                          blockContext: HtmlBlockContext(
+                            baseStyle: baseStyle,
+                            headingStyles: headingStyles,
+                            onLinkTap: onLinkTap,
+                            imageBuilder: imageBuilder,
+                          ),
+                          blockBuilder: blockBuilder,
                         ),
-                        blockBuilder: blockBuilder,
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ),
             );
           },
@@ -160,26 +164,31 @@ class _ColumnWidget extends StatelessWidget {
   const _ColumnWidget({
     super.key,
     required this.blocks,
+    required this.viewportHeight,
     required this.blockContext,
     this.blockBuilder,
   });
 
   final List<HtmlBlockNode> blocks;
+  final double viewportHeight;
   final HtmlBlockContext blockContext;
   final Widget? Function(BuildContext context, HtmlBlockNode block)? blockBuilder;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      itemCount: blocks.length,
-      itemBuilder: (context, index) {
-        return HtmlBlockView(
-          block: blocks[index],
-          blockContext: blockContext,
-          builder: blockBuilder,
-        );
-      },
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+    return SizedBox(
+      height: viewportHeight,
+      child: ListView.separated(
+        itemCount: blocks.length,
+        itemBuilder: (context, index) {
+          return HtmlBlockView(
+            block: blocks[index],
+            blockContext: blockContext,
+            builder: blockBuilder,
+          );
+        },
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+      ),
     );
   }
 }
