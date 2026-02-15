@@ -3,7 +3,8 @@ import 'example_reader_models.dart';
 import 'example_reader_paths.dart';
 
 class ExampleReaderImages {
-  const ExampleReaderImages({required ExampleReaderPaths paths}) : _paths = paths;
+  const ExampleReaderImages({required ExampleReaderPaths paths})
+    : _paths = paths;
 
   final ExampleReaderPaths _paths;
 
@@ -22,9 +23,9 @@ class ExampleReaderImages {
     );
     final mappedRemoteUrl = resolvedEpubPath == null
         ? null
-        : ExampleDemoContent.epubImageUrlByPath[
-            _paths.normalizePath(resolvedEpubPath)
-          ];
+        : ExampleDemoContent.epubImageUrlByPath[_paths.normalizePath(
+            resolvedEpubPath,
+          )];
     final effectiveUrl = isRemote ? src : mappedRemoteUrl;
 
     return ExampleImageData(

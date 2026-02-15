@@ -38,7 +38,10 @@ class ExampleReaderPagination {
       1,
       totalColumnPages,
     );
-    return ChapterPagination(current: currentColumnPage, total: totalColumnPages);
+    return ChapterPagination(
+      current: currentColumnPage,
+      total: totalColumnPages,
+    );
   }
 
   int? resolvePageInChapterForFragment({

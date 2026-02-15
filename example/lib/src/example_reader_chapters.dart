@@ -1,5 +1,5 @@
 import 'example_demo_content.dart';
-import 'example_reader_paths.dart';
+import 'helpers/example_reader_paths.dart';
 
 class ExampleReaderChapters {
   const ExampleReaderChapters({required ExampleReaderPaths paths})

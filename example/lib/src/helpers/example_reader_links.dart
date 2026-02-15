@@ -16,7 +16,8 @@ class ExampleReaderLinks {
     required String? resolvedTargetDocument,
     required String Function(String value) normalizePath,
     required NavigateToChapterFragment navigateToChapterFragment,
-    required Future<bool> Function(HtmlReference reference) resolveAndNavigateCfi,
+    required Future<bool> Function(HtmlReference reference)
+    resolveAndNavigateCfi,
     required HtmlReaderController readerController,
   }) async {
     final hasExplicitPath =
@@ -24,7 +25,8 @@ class ExampleReaderLinks {
     final isCrossDocument =
         hasExplicitPath &&
         resolvedTargetDocument != null &&
-        normalizePath(resolvedTargetDocument) != normalizePath(currentChapterPath);
+        normalizePath(resolvedTargetDocument) !=
+            normalizePath(currentChapterPath);
 
     if (isCrossDocument) {
       await navigateToChapterFragment(
