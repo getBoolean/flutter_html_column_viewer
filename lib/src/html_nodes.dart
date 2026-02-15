@@ -1,0 +1,273 @@
+import 'package:flutter/material.dart';
+
+double _measureTextHeight(
+  String text, {
+  required TextStyle style,
+  required double maxWidth,
+}) {
+  if (text.trim().isEmpty) {
+    return (style.fontSize ?? 16) * 1.2;
+  }
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: TextDirection.ltr,
+    maxLines: null,
+  )..layout(maxWidth: maxWidth);
+  return painter.height;
+}
+
+@immutable
+class HtmlStyleData {
+  const HtmlStyleData({
+    this.color,
+    this.backgroundColor,
+    this.fontSize,
+    this.fontWeight,
+    this.fontStyle,
+    this.decoration,
+    this.textAlign,
+  });
+
+  final Color? color;
+  final Color? backgroundColor;
+  final double? fontSize;
+  final FontWeight? fontWeight;
+  final FontStyle? fontStyle;
+  final TextDecoration? decoration;
+  final TextAlign? textAlign;
+
+  static const HtmlStyleData empty = HtmlStyleData();
+
+  HtmlStyleData merge(HtmlStyleData? other) {
+    if (other == null) {
+      return this;
+    }
+    return HtmlStyleData(
+      color: other.color ?? color,
+      backgroundColor: other.backgroundColor ?? backgroundColor,
+      fontSize: other.fontSize ?? fontSize,
+      fontWeight: other.fontWeight ?? fontWeight,
+      fontStyle: other.fontStyle ?? fontStyle,
+      decoration: other.decoration ?? decoration,
+      textAlign: other.textAlign ?? textAlign,
+    );
+  }
+
+  TextStyle applyTo(TextStyle base) {
+    return base.copyWith(
+      color: color ?? base.color,
+      backgroundColor: backgroundColor ?? base.backgroundColor,
+      fontSize: fontSize ?? base.fontSize,
+      fontWeight: fontWeight ?? base.fontWeight,
+      fontStyle: fontStyle ?? base.fontStyle,
+      decoration: decoration ?? base.decoration,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is HtmlStyleData &&
+            runtimeType == other.runtimeType &&
+            color == other.color &&
+            backgroundColor == other.backgroundColor &&
+            fontSize == other.fontSize &&
+            fontWeight == other.fontWeight &&
+            fontStyle == other.fontStyle &&
+            decoration == other.decoration &&
+            textAlign == other.textAlign;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    color,
+    backgroundColor,
+    fontSize,
+    fontWeight,
+    fontStyle,
+    decoration,
+    textAlign,
+  );
+}
+
+@immutable
+class HtmlInlineSegment {
+  const HtmlInlineSegment({
+    required this.text,
+    this.href,
+    this.style = HtmlStyleData.empty,
+    this.isCode = false,
+  });
+
+  final String text;
+  final String? href;
+  final HtmlStyleData style;
+  final bool isCode;
+}
+
+abstract class HtmlBlockNode {
+  const HtmlBlockNode();
+
+  double estimateHeight({
+    required double columnWidth,
+    required TextStyle baseTextStyle,
+  });
+}
+
+@immutable
+class HtmlTextBlockNode extends HtmlBlockNode {
+  const HtmlTextBlockNode({
+    required this.segments,
+    this.headingLevel,
+    this.style = HtmlStyleData.empty,
+    this.isBlockquote = false,
+    this.preformatted = false,
+  });
+
+  final List<HtmlInlineSegment> segments;
+  final int? headingLevel;
+  final HtmlStyleData style;
+  final bool isBlockquote;
+  final bool preformatted;
+
+  String get plainText => segments.map((segment) => segment.text).join();
+
+  @override
+  double estimateHeight({
+    required double columnWidth,
+    required TextStyle baseTextStyle,
+  }) {
+    final text = plainText.trim();
+    if (text.isEmpty) {
+      return 20;
+    }
+    final headingSize = switch (headingLevel?.clamp(1, 6)) {
+      1 => 32.0,
+      2 => 28.0,
+      3 => 24.0,
+      4 => 21.0,
+      5 => 18.0,
+      6 => 16.0,
+      _ => null,
+    };
+    final effectiveStyle = style.applyTo(
+      baseTextStyle.copyWith(
+        fontSize: headingSize ?? baseTextStyle.fontSize,
+        fontWeight: headingLevel != null
+            ? FontWeight.w700
+            : baseTextStyle.fontWeight,
+        height: preformatted ? 1.35 : 1.45,
+      ),
+    );
+    final measured = _measureTextHeight(
+      text,
+      style: effectiveStyle,
+      maxWidth: columnWidth,
+    );
+    return measured + (headingLevel != null ? 12 : 8);
+  }
+}
+
+@immutable
+class HtmlListBlockNode extends HtmlBlockNode {
+  const HtmlListBlockNode({
+    required this.ordered,
+    required this.items,
+    this.style = HtmlStyleData.empty,
+  });
+
+  final bool ordered;
+  final List<List<HtmlInlineSegment>> items;
+  final HtmlStyleData style;
+
+  @override
+  double estimateHeight({
+    required double columnWidth,
+    required TextStyle baseTextStyle,
+  }) {
+    var total = 0.0;
+    final itemWidth = (columnWidth - 22).clamp(40.0, double.infinity);
+    final itemBaseStyle = style.applyTo(baseTextStyle).copyWith(height: 1.4);
+    for (final item in items) {
+      final text = item.map((segment) => segment.text).join().trim();
+      total +=
+          _measureTextHeight(
+            text.isEmpty ? '•' : text,
+            style: itemBaseStyle,
+            maxWidth: itemWidth,
+          ) +
+          6;
+    }
+    return total + 10;
+  }
+}
+
+@immutable
+class HtmlTableBlockNode extends HtmlBlockNode {
+  const HtmlTableBlockNode({required this.rows, this.hasHeader = false});
+
+  final List<List<String>> rows;
+  final bool hasHeader;
+
+  @override
+  double estimateHeight({
+    required double columnWidth,
+    required TextStyle baseTextStyle,
+  }) {
+    if (rows.isEmpty) {
+      return 0;
+    }
+    final maxCols = rows.fold<int>(
+      0,
+      (prev, row) => row.length > prev ? row.length : prev,
+    );
+    final colWidth = maxCols == 0
+        ? columnWidth
+        : (columnWidth / maxCols).clamp(40.0, columnWidth);
+    var total = 0.0;
+    for (final row in rows) {
+      var rowHeight = 0.0;
+      for (final cell in row) {
+        final h = _measureTextHeight(
+          cell,
+          style: baseTextStyle.copyWith(height: 1.3),
+          maxWidth: colWidth - 16,
+        );
+        if (h > rowHeight) {
+          rowHeight = h;
+        }
+      }
+      total += rowHeight + 16;
+    }
+    return total + 2;
+  }
+}
+
+@immutable
+class HtmlImageBlockNode extends HtmlBlockNode {
+  const HtmlImageBlockNode({required this.src, this.alt});
+
+  final String src;
+  final String? alt;
+
+  @override
+  double estimateHeight({
+    required double columnWidth,
+    required TextStyle baseTextStyle,
+  }) {
+    return columnWidth * 0.6;
+  }
+}
+
+@immutable
+class HtmlDividerBlockNode extends HtmlBlockNode {
+  const HtmlDividerBlockNode();
+
+  @override
+  double estimateHeight({
+    required double columnWidth,
+    required TextStyle baseTextStyle,
+  }) {
+    return 28;
+  }
+}
