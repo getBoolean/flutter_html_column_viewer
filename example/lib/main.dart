@@ -72,34 +72,7 @@ class _ExamplePageState extends State<_ExamplePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flutter HTML Viewer Example'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _currentPage > 0 ? _previousPage : null,
-            tooltip: 'Previous page',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-            child: Center(
-              child: Text(
-                _pageCount > 0
-                    ? '${_currentPage + 1} / $_pageCount'
-                    : '—',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _pageCount > 0 && _currentPage < _pageCount - 1
-                ? _nextPage
-                : null,
-            tooltip: 'Next page',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Flutter HTML Viewer Example')),
       body: Column(
         children: [
           Expanded(
@@ -120,22 +93,33 @@ class _ExamplePageState extends State<_ExamplePage> {
           ),
           SafeArea(
             top: false,
-            child: ButtonBar(
-              alignment: MainAxisAlignment.center,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: _currentPage > 0 ? _previousPage : null,
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Previous'),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: _pageCount > 0 && _currentPage < _pageCount - 1
-                      ? _nextPage
-                      : null,
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Next'),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: _currentPage > 0 ? _previousPage : null,
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Previous'),
+                  ),
+                  if (_pageCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '${_currentPage + 1} / $_pageCount',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  FilledButton.tonalIcon(
+                    onPressed: _pageCount > 0 && _currentPage < _pageCount - 1
+                        ? _nextPage
+                        : null,
+                    icon: const Icon(Icons.arrow_forward),
+                    label: const Text('Next'),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
