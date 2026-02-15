@@ -188,31 +188,60 @@ class _ExamplePageState extends State<_ExamplePage> {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FilledButton.tonalIcon(
-                    onPressed: _currentPage > 0 ? _previousPage : null,
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Previous'),
-                  ),
-                  if (_pageCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        '${_currentPage + 1} / $_pageCount ($_currentDocumentPath)',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  FilledButton.tonalIcon(
-                    onPressed: _pageCount > 0 && _currentPage < _pageCount - 1
-                        ? _nextPage
-                        : null,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: const Text('Next'),
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 360;
+                  final previousButton = compact
+                      ? IconButton.filledTonal(
+                          onPressed: _currentPage > 0 ? _previousPage : null,
+                          tooltip: 'Previous',
+                          icon: const Icon(Icons.arrow_back),
+                        )
+                      : FilledButton.tonalIcon(
+                          onPressed: _currentPage > 0 ? _previousPage : null,
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Previous'),
+                        );
+                  final nextButton = compact
+                      ? IconButton.filledTonal(
+                          onPressed:
+                              _pageCount > 0 && _currentPage < _pageCount - 1
+                              ? _nextPage
+                              : null,
+                          tooltip: 'Next',
+                          icon: const Icon(Icons.arrow_forward),
+                        )
+                      : FilledButton.tonalIcon(
+                          onPressed:
+                              _pageCount > 0 && _currentPage < _pageCount - 1
+                              ? _nextPage
+                              : null,
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text('Next'),
+                        );
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      previousButton,
+                      if (_pageCount > 0) ...[
+                        SizedBox(width: compact ? 8 : 12),
+                        Expanded(
+                          child: Text(
+                            '${_currentPage + 1} / $_pageCount ($_currentDocumentPath)',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(width: compact ? 8 : 12),
+                      ],
+                      nextButton,
+                    ],
+                  );
+                },
               ),
             ),
           ),
