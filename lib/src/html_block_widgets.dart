@@ -9,13 +9,13 @@ class HtmlBlockContext {
   const HtmlBlockContext({
     required this.baseStyle,
     this.headingStyles = const <int, TextStyle>{},
-    this.onLinkTap,
+    this.onRefTap,
     this.imageBuilder,
   });
 
   final TextStyle baseStyle;
   final Map<int, TextStyle> headingStyles;
-  final HtmlLinkTapCallback? onLinkTap;
+  final HtmlRefTapCallback? onRefTap;
   final HtmlImageBuilder? imageBuilder;
 
   TextStyle headingStyleFor(int level) {
@@ -104,15 +104,11 @@ class HtmlTextBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     var effectiveStyle = node.style.applyTo(blockContext.baseStyle);
     if (node.headingLevel != null) {
-      effectiveStyle =
-          blockContext.headingStyleFor(node.headingLevel!);
+      effectiveStyle = blockContext.headingStyleFor(node.headingLevel!);
     }
 
     if (node.preformatted) {
-      return _PreformattedBlock(
-        node: node,
-        effectiveStyle: effectiveStyle,
-      );
+      return _PreformattedBlock(node: node, effectiveStyle: effectiveStyle);
     }
 
     final spans = _buildSpans(effectiveStyle);
@@ -137,13 +133,13 @@ class HtmlTextBlock extends StatelessWidget {
             : effectiveStyle,
       );
 
-      if (segment.href != null && blockContext.onLinkTap != null) {
+      if (segment.reference != null && blockContext.onRefTap != null) {
         spans.add(
           TextSpan(
             text: segment.text,
             style: segmentStyle,
             recognizer: TapGestureRecognizer()
-              ..onTap = () => blockContext.onLinkTap!(segment.href!),
+              ..onTap = () => blockContext.onRefTap!(segment.reference!),
           ),
         );
       } else {
@@ -155,10 +151,7 @@ class HtmlTextBlock extends StatelessWidget {
 }
 
 class _PreformattedBlock extends StatelessWidget {
-  const _PreformattedBlock({
-    required this.node,
-    required this.effectiveStyle,
-  });
+  const _PreformattedBlock({required this.node, required this.effectiveStyle});
 
   final HtmlTextBlockNode node;
   final TextStyle effectiveStyle;
@@ -235,7 +228,9 @@ class HtmlListBlock extends StatelessWidget {
                         .map(
                           (segment) => TextSpan(
                             text: segment.text,
-                            style: segment.style.applyTo(blockContext.baseStyle),
+                            style: segment.style.applyTo(
+                              blockContext.baseStyle,
+                            ),
                           ),
                         )
                         .toList(growable: false),
@@ -285,7 +280,9 @@ class HtmlTableBlock extends StatelessWidget {
           return TableRow(
             decoration: node.hasHeader && rowIndex == 0
                 ? BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   )
                 : null,
             children: List<Widget>.generate(maxColumns, (colIndex) {
@@ -296,7 +293,9 @@ class HtmlTableBlock extends StatelessWidget {
                   text,
                   softWrap: true,
                   style: rowIndex == 0 && node.hasHeader
-                      ? blockContext.baseStyle.copyWith(fontWeight: FontWeight.w700)
+                      ? blockContext.baseStyle.copyWith(
+                          fontWeight: FontWeight.w700,
+                        )
                       : blockContext.baseStyle,
                 ),
               );
@@ -310,16 +309,20 @@ class HtmlTableBlock extends StatelessWidget {
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
         if (maxWidth.isFinite && maxWidth > 0 && maxColumns > 0) {
-          final columnWidth =
-              (maxWidth / maxColumns).clamp(48.0, double.infinity);
+          final columnWidth = (maxWidth / maxColumns).clamp(
+            48.0,
+            double.infinity,
+          );
           return buildTable({
-            for (var i = 0; i < maxColumns; i++) i: FixedColumnWidth(columnWidth),
+            for (var i = 0; i < maxColumns; i++)
+              i: FixedColumnWidth(columnWidth),
           });
         }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: buildTable({
-            for (var i = 0; i < maxColumns; i++) i: const IntrinsicColumnWidth(),
+            for (var i = 0; i < maxColumns; i++)
+              i: const IntrinsicColumnWidth(),
           }),
         );
       },
@@ -341,11 +344,7 @@ class HtmlImageBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (blockContext.imageBuilder != null) {
-      return blockContext.imageBuilder!(
-        context,
-        node.src,
-        node.alt,
-      );
+      return blockContext.imageBuilder!(context, node.src, node.alt);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

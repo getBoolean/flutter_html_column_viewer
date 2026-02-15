@@ -3,7 +3,72 @@ import 'package:flutter/material.dart';
 typedef HtmlImageBuilder =
     Widget Function(BuildContext context, String src, String? alt);
 
-typedef HtmlLinkTapCallback = void Function(String href);
+typedef HtmlRefTapCallback = void Function(HtmlReference reference);
+
+@immutable
+class HtmlReference {
+  const HtmlReference({
+    required this.raw,
+    this.uri,
+    this.path,
+    this.fragmentId,
+    this.isCfiLike = false,
+    this.epubType,
+    this.role,
+  });
+
+  final String raw;
+  final Uri? uri;
+  final String? path;
+  final String? fragmentId;
+  final bool isCfiLike;
+  final String? epubType;
+  final String? role;
+
+  static HtmlReference fromRaw(String raw, {String? epubType, String? role}) {
+    final trimmed = raw.trim();
+    final uri = Uri.tryParse(trimmed);
+    final hashIndex = trimmed.indexOf('#');
+    final path = hashIndex >= 0
+        ? trimmed.substring(0, hashIndex).trim()
+        : trimmed.trim();
+    final fragment = hashIndex >= 0 ? trimmed.substring(hashIndex + 1) : null;
+    final normalizedPath = path.isEmpty ? null : path;
+    final isCfi =
+        fragment != null &&
+        fragment.isNotEmpty &&
+        fragment.toLowerCase().startsWith('epubcfi(');
+
+    return HtmlReference(
+      raw: trimmed,
+      uri: uri,
+      path: normalizedPath,
+      fragmentId: isCfi || fragment == null || fragment.isEmpty
+          ? null
+          : fragment,
+      isCfiLike: isCfi,
+      epubType: epubType,
+      role: role,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is HtmlReference &&
+            runtimeType == other.runtimeType &&
+            raw == other.raw &&
+            path == other.path &&
+            fragmentId == other.fragmentId &&
+            isCfiLike == other.isCfiLike &&
+            epubType == other.epubType &&
+            role == other.role;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(raw, path, fragmentId, isCfiLike, epubType, role);
+}
 
 double _measureTextHeight(
   String text, {
@@ -99,19 +164,21 @@ class HtmlStyleData {
 class HtmlInlineSegment {
   const HtmlInlineSegment({
     required this.text,
-    this.href,
+    this.reference,
     this.style = HtmlStyleData.empty,
     this.isCode = false,
   });
 
   final String text;
-  final String? href;
+  final HtmlReference? reference;
   final HtmlStyleData style;
   final bool isCode;
 }
 
 abstract class HtmlBlockNode {
-  const HtmlBlockNode();
+  const HtmlBlockNode({this.id});
+
+  final String? id;
 
   double estimateHeight({
     required double columnWidth,
@@ -123,6 +190,7 @@ abstract class HtmlBlockNode {
 class HtmlTextBlockNode extends HtmlBlockNode {
   const HtmlTextBlockNode({
     required this.segments,
+    super.id,
     this.headingLevel,
     this.style = HtmlStyleData.empty,
     this.isBlockquote = false,
@@ -178,6 +246,7 @@ class HtmlListBlockNode extends HtmlBlockNode {
   const HtmlListBlockNode({
     required this.ordered,
     required this.items,
+    super.id,
     this.style = HtmlStyleData.empty,
   });
 
@@ -209,7 +278,11 @@ class HtmlListBlockNode extends HtmlBlockNode {
 
 @immutable
 class HtmlTableBlockNode extends HtmlBlockNode {
-  const HtmlTableBlockNode({required this.rows, this.hasHeader = false});
+  const HtmlTableBlockNode({
+    required this.rows,
+    super.id,
+    this.hasHeader = false,
+  });
 
   final List<List<String>> rows;
   final bool hasHeader;
@@ -251,7 +324,7 @@ class HtmlTableBlockNode extends HtmlBlockNode {
 
 @immutable
 class HtmlImageBlockNode extends HtmlBlockNode {
-  const HtmlImageBlockNode({required this.src, this.alt});
+  const HtmlImageBlockNode({required this.src, this.alt, super.id});
 
   final String src;
   final String? alt;
@@ -267,7 +340,7 @@ class HtmlImageBlockNode extends HtmlBlockNode {
 
 @immutable
 class HtmlDividerBlockNode extends HtmlBlockNode {
-  const HtmlDividerBlockNode();
+  const HtmlDividerBlockNode({super.id});
 
   @override
   double estimateHeight({

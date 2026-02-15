@@ -24,7 +24,7 @@ void main() {
     final paragraphBlock = blocks.whereType<HtmlTextBlockNode>().elementAt(1);
     expect(
       paragraphBlock.segments.any(
-        (segment) => segment.href == 'https://example.com',
+        (segment) => segment.reference?.raw == 'https://example.com',
       ),
       isTrue,
     );

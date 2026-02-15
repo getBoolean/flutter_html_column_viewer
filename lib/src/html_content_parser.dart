@@ -65,14 +65,20 @@ class HtmlContentParser {
     );
 
     if (tag == 'hr') {
-      out.add(const HtmlDividerBlockNode());
+      out.add(HtmlDividerBlockNode(id: _elementId(node)));
       return;
     }
 
     if (tag == 'img') {
       final src = node.attributes['src']?.trim();
       if (src != null && src.isNotEmpty) {
-        out.add(HtmlImageBlockNode(src: src, alt: node.attributes['alt']));
+        out.add(
+          HtmlImageBlockNode(
+            src: src,
+            alt: node.attributes['alt'],
+            id: _elementId(node),
+          ),
+        );
       }
       return;
     }
@@ -81,6 +87,7 @@ class HtmlContentParser {
       out.add(
         HtmlTextBlockNode(
           segments: _parseInlineNodes(node.nodes, mergedStyle),
+          id: _elementId(node),
           headingLevel: int.parse(tag.substring(1)),
           style: mergedStyle,
         ),
@@ -91,7 +98,13 @@ class HtmlContentParser {
     if (tag == 'p' || tag == 'div' || tag == 'article' || tag == 'section') {
       final segments = _parseInlineNodes(node.nodes, mergedStyle);
       if (segments.isNotEmpty) {
-        out.add(HtmlTextBlockNode(segments: segments, style: mergedStyle));
+        out.add(
+          HtmlTextBlockNode(
+            segments: segments,
+            id: _elementId(node),
+            style: mergedStyle,
+          ),
+        );
       } else {
         for (final child in node.nodes) {
           _parseNodeIntoBlocks(child, mergedStyle, out);
@@ -106,6 +119,7 @@ class HtmlContentParser {
         out.add(
           HtmlTextBlockNode(
             segments: segments,
+            id: _elementId(node),
             style: mergedStyle,
             isBlockquote: true,
           ),
@@ -122,6 +136,7 @@ class HtmlContentParser {
             segments: <HtmlInlineSegment>[
               HtmlInlineSegment(text: text, style: mergedStyle, isCode: true),
             ],
+            id: _elementId(node),
             style: mergedStyle,
             preformatted: true,
           ),
@@ -140,7 +155,12 @@ class HtmlContentParser {
       }
       if (items.isNotEmpty) {
         out.add(
-          HtmlListBlockNode(ordered: ordered, items: items, style: mergedStyle),
+          HtmlListBlockNode(
+            ordered: ordered,
+            items: items,
+            id: _elementId(node),
+            style: mergedStyle,
+          ),
         );
       }
       return;
@@ -166,7 +186,13 @@ class HtmlContentParser {
         rows.add(row);
       }
       if (rows.isNotEmpty) {
-        out.add(HtmlTableBlockNode(rows: rows, hasHeader: hasHeader));
+        out.add(
+          HtmlTableBlockNode(
+            rows: rows,
+            id: _elementId(node),
+            hasHeader: hasHeader,
+          ),
+        );
       }
       return;
     }
@@ -177,6 +203,7 @@ class HtmlContentParser {
           segments: <HtmlInlineSegment>[
             HtmlInlineSegment(text: '\n', style: mergedStyle),
           ],
+          id: _elementId(node),
           style: mergedStyle,
         ),
       );
@@ -185,7 +212,13 @@ class HtmlContentParser {
 
     final inlineSegments = _parseInlineNodes(node.nodes, mergedStyle);
     if (inlineSegments.isNotEmpty) {
-      out.add(HtmlTextBlockNode(segments: inlineSegments, style: mergedStyle));
+      out.add(
+        HtmlTextBlockNode(
+          segments: inlineSegments,
+          id: _elementId(node),
+          style: mergedStyle,
+        ),
+      );
       return;
     }
     for (final child in node.nodes) {
@@ -223,7 +256,7 @@ class HtmlContentParser {
       var childStyle = inheritedStyle.merge(
         _styleParser.parseInlineStyle(node.attributes['style']),
       );
-      String? href;
+      HtmlReference? reference;
 
       if (tag == 'strong' || tag == 'b') {
         childStyle = childStyle.merge(
@@ -238,13 +271,20 @@ class HtmlContentParser {
           const HtmlStyleData(decoration: TextDecoration.underline),
         );
       } else if (tag == 'a') {
-        href = node.attributes['href'];
-        childStyle = childStyle.merge(
-          const HtmlStyleData(
-            color: Color(0xFF1565C0),
-            decoration: TextDecoration.underline,
-          ),
-        );
+        final href = node.attributes['href']?.trim();
+        if (href != null && href.isNotEmpty) {
+          reference = HtmlReference.fromRaw(
+            href,
+            epubType: _cleanAttribute(node.attributes['epub:type']),
+            role: _cleanAttribute(node.attributes['role']),
+          );
+          childStyle = childStyle.merge(
+            const HtmlStyleData(
+              color: Color(0xFF1565C0),
+              decoration: TextDecoration.underline,
+            ),
+          );
+        }
       } else if (tag == 'br') {
         segments.add(HtmlInlineSegment(text: '\n', style: childStyle));
         continue;
@@ -259,13 +299,13 @@ class HtmlContentParser {
       }
 
       final children = _parseInlineNodes(node.nodes, childStyle);
-      if (href != null) {
+      if (reference != null) {
         for (final segment in children) {
           segments.add(
             HtmlInlineSegment(
               text: segment.text,
               style: segment.style,
-              href: href,
+              reference: reference,
               isCode: segment.isCode,
             ),
           );
@@ -291,14 +331,14 @@ class HtmlContentParser {
         continue;
       }
       final last = merged.last;
-      if (last.href == segment.href &&
+      if (last.reference == segment.reference &&
           last.style == segment.style &&
           last.isCode == segment.isCode) {
         merged.removeLast();
         merged.add(
           HtmlInlineSegment(
             text: '${last.text}${segment.text}',
-            href: last.href,
+            reference: last.reference,
             style: last.style,
             isCode: last.isCode,
           ),
@@ -313,5 +353,14 @@ class HtmlContentParser {
   String _normalizeWhitespace(String input, {bool trim = true}) {
     final collapsed = input.replaceAll(RegExp(r'\s+'), ' ');
     return trim ? collapsed.trim() : collapsed;
+  }
+
+  String? _cleanAttribute(String? input) {
+    final trimmed = input?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  String? _elementId(dom.Element node) {
+    return _cleanAttribute(node.attributes['id']);
   }
 }

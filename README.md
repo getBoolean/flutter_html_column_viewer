@@ -13,7 +13,7 @@ Rendering HTML in Flutter usually means dropping in a `WebView` and losing nativ
 ## Features
 
 | Area | What you get |
-|------|----------------|
+| ------ | ---------------- |
 | **Rendering** | 100% Flutter widgets — no WebView or platform views |
 | **Layout** | Paged multi-column layout; set `columnsPerPage` and swipe between pages |
 | **HTML** | Headings (h1–h6), paragraphs, links, lists, blockquote, `pre`/`code`, tables, images |
@@ -51,7 +51,7 @@ class ReaderPage extends StatelessWidget {
         ''',
         columnsPerPage: 2,
         columnGap: 16,
-        onLinkTap: (href) => debugPrint('Tapped: $href'),
+        onRefTap: (ref) => debugPrint('Tapped ref: ${ref.raw}'),
       ),
     );
   }
@@ -64,7 +64,8 @@ class ReaderPage extends StatelessWidget {
 - **`columnGap`** — Space between columns.
 - **`pagePadding`** — Padding around each page.
 - **`textStyle`** / **`headingStyles`** — Base and heading text styles.
-- **`onLinkTap`** — Callback when a link is tapped.
+- **`onRefTap`** — Callback when a reference is tapped (`HtmlReference`).
+- **`onBookmarkIndexChanged`** — Callback with `id -> pageIndex` mapping after layout.
 - **`imageBuilder`** — Optional custom builder for `<img>` widgets.
 
 ---
@@ -72,16 +73,19 @@ class ReaderPage extends StatelessWidget {
 ## API summary
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `html` | `String` | Source HTML |
 | `columnsPerPage` | `int` | Columns per page (e.g. 2) |
 | `columnGap` | `double` | Gap between columns |
 | `pagePadding` | `EdgeInsetsGeometry` | Page padding |
 | `textStyle` | `TextStyle?` | Base text style |
 | `headingStyles` | `Map<int, TextStyle>` | Overrides for h1–h6 |
-| `onLinkTap` | `void Function(String href)?` | Link tap callback |
+| `onRefTap` | `void Function(HtmlReference ref)?` | Reference tap callback |
+| `onBookmarkIndexChanged` | `void Function(Map<String, int>)?` | Block ID to page index mapping |
 | `imageBuilder` | `HtmlImageBuilder?` | Custom image widget |
 | `parser` | `HtmlContentParser?` | Custom parser (advanced) |
+
+`HtmlReference` exposes the raw value and lightweight hints (`path`, `fragmentId`, `isCfiLike`, `epubType`, `role`). CFI values are surfaced but not resolved by this package.
 
 ---
 
