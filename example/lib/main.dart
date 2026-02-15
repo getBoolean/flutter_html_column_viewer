@@ -24,6 +24,7 @@ class _ExamplePage extends StatefulWidget {
 
 class _ExamplePageState extends State<_ExamplePage> {
   final HtmlReaderController _readerController = HtmlReaderController();
+  final EpubCfiParser _cfiParser = const EpubCfiParser();
   final Map<String, String> _documents = <String, String>{
     'chapter1.xhtml': _chapter1Html,
     'chapter2.xhtml': _chapter2Html,
@@ -153,11 +154,7 @@ class _ExamplePageState extends State<_ExamplePage> {
   }
 
   Future<bool> _resolveAndNavigateCfi(HtmlReference reference) async {
-    final cfi = _extractCfiExpression(reference.raw);
-    if (cfi == null) {
-      return false;
-    }
-    final candidates = _extractCfiBracketIdentifiers(cfi);
+    final candidates = _cfiParser.parseCandidateIds(reference.raw);
     if (candidates.isEmpty) {
       return false;
     }
@@ -169,27 +166,6 @@ class _ExamplePageState extends State<_ExamplePage> {
       }
     }
     return false;
-  }
-
-  String? _extractCfiExpression(String raw) {
-    final match = RegExp(
-      r'epubcfi\((.+)\)',
-      caseSensitive: false,
-    ).firstMatch(raw);
-    return match?.group(1);
-  }
-
-  List<String> _extractCfiBracketIdentifiers(String cfi) {
-    final matches = RegExp(r'\[([^\]]+)\]').allMatches(cfi);
-    if (matches.isEmpty) {
-      return const <String>[];
-    }
-    return matches
-        .map((match) => match.group(1)?.trim())
-        .whereType<String>()
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
   }
 
   @override
