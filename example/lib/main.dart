@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MainApp());
@@ -13,7 +14,16 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: const Text('Flutter HTML Viewer Example')),
-        body: HtmlColumnReader(columnsPerPage: 2, html: _sampleHtml),
+        body: HtmlColumnReader(
+          columnsPerPage: 2,
+          html: _sampleHtml,
+          onLinkTap: (href) {
+            final uri = Uri.tryParse(href);
+            if (uri != null) {
+              launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+        ),
       ),
     );
   }
