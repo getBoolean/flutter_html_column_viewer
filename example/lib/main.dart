@@ -1,3 +1,89 @@
+import 'package:flutter/material.dart';
+
+import 'src/example_reader_service.dart';
+import 'src/widgets/example_bottom_controls.dart';
+import 'src/widgets/example_reader_view.dart';
+
+void main() {
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(home: const ExamplePage());
+  }
+}
+
+class ExamplePage extends StatefulWidget {
+  const ExamplePage({super.key});
+
+  @override
+  State<ExamplePage> createState() => _ExamplePageState();
+}
+
+class _ExamplePageState extends State<ExamplePage> {
+  late final ExampleReaderService _service;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = ExampleReaderService();
+  }
+
+  @override
+  void dispose() {
+    _service.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _service,
+      builder: (context, _) {
+        final pagination = _service.chapterPagination;
+        final pageLabel = _service.pageCount > 0
+            ? '${pagination?.current ?? 0} / ${pagination?.total ?? 0} (${_service.currentDocumentPath})'
+            : null;
+
+        return Scaffold(
+          appBar: AppBar(title: const Text('Flutter HTML Viewer Example')),
+          body: Column(
+            children: [
+              Expanded(
+                child: ExampleReaderView(
+                  service: _service,
+                  onMessage: _showMessage,
+                ),
+              ),
+              ExampleBottomControls(
+                canGoPrevious: _service.canGoPrevious,
+                canGoNext: _service.canGoNext,
+                onPrevious: _service.onPreviousPagePressed,
+                onNext: _service.onNextPagePressed,
+                pageLabel: pageLabel,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+/*
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -811,3 +897,4 @@ Tap <a href="chapter1.xhtml#section3">back to chapter 1 section 3</a>.
 <p>Vestibulum dignissim neque ac arcu interdum, vel tincidunt velit posuere.</p>
 <p>Curabitur congue, justo ut varius efficitur, neque arcu consequat justo.</p>
 ''';
+*/
