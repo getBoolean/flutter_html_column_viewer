@@ -209,7 +209,7 @@ class HtmlContentParser {
     final segments = <HtmlInlineSegment>[];
     for (final node in nodes) {
       if (node is dom.Text) {
-        final text = _normalizeWhitespace(node.text);
+        final text = _normalizeWhitespace(node.text, trim: false);
         if (text.isNotEmpty) {
           segments.add(HtmlInlineSegment(text: text, style: inheritedStyle));
         }
@@ -310,7 +310,8 @@ class HtmlContentParser {
     return merged;
   }
 
-  String _normalizeWhitespace(String input) {
-    return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+  String _normalizeWhitespace(String input, {bool trim = true}) {
+    final collapsed = input.replaceAll(RegExp(r'\s+'), ' ');
+    return trim ? collapsed.trim() : collapsed;
   }
 }
