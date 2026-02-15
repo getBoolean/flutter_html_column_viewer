@@ -114,9 +114,7 @@ class _ExamplePageState extends State<_ExamplePage> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Unable to resolve CFI target from: ${reference.raw}',
-          ),
+          content: Text('Unable to resolve CFI target from: ${reference.raw}'),
         ),
       );
       return;
@@ -264,6 +262,65 @@ or an <a href="https://example.com">external URL</a>.
 Accessibility note example:
 <a href="#note1" epub:type="noteref" role="doc-noteref">Footnote 1</a>.
 </p>
+<h2 id="supported-html-css">Supported HTML and CSS examples</h2>
+<h3 style="color: rgb(38, 70, 83);">Heading level 3</h3>
+<h4 style="color: teal;">Heading level 4</h4>
+<h5 style="font-style: italic;">Heading level 5</h5>
+<h6 style="text-decoration: underline;">Heading level 6</h6>
+<section id="section-block" style="background-color: #f1f8e9;">
+  <p style="font-size: 18px; font-weight: 600;">
+    Section + paragraph with inline CSS: <strong>strong</strong>, <b>b</b>,
+    <em>em</em>, <i>i</i>, <u>u</u>, and inline <code>code()</code>.
+  </p>
+</section>
+<article id="article-block">
+  <div style="text-align: center; color: #37474f;">
+    Article + div block with centered text and named/hex colors.
+    <br>
+    This second line is created with a <code>&lt;br&gt;</code> tag.
+  </div>
+</article>
+<blockquote style="font-style: italic; color: #424242;">
+  Blockquote example rendered with a quote border style in Flutter.
+</blockquote>
+<pre id="pre-sample" style="background-color: #eeeeee; color: #1b5e20;">
+for (var i = 0; i < 3; i++) {
+  print('preformatted code line \$i');
+}
+</pre>
+<hr>
+<ul id="unordered-list">
+  <li>Unordered item with <strong>bold text</strong></li>
+  <li>Unordered item with <em>italic text</em></li>
+  <li>Unordered item with <u>underlined text</u></li>
+</ul>
+<ol id="ordered-list" style="font-size: 15px;">
+  <li>Ordered item one</li>
+  <li>Ordered item two</li>
+  <li>Ordered item three</li>
+</ol>
+<table id="table-sample">
+  <tr>
+    <th>Tag</th>
+    <th>Status</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>table</td>
+    <td>Supported</td>
+    <td>th/td rows are rendered as Flutter Table</td>
+  </tr>
+  <tr>
+    <td>img</td>
+    <td>Supported</td>
+    <td>Uses Image.network by default</td>
+  </tr>
+</table>
+<img
+  id="example-image"
+  src="https://placehold.co/640x220/90caf9/0d47a1?text=HTML+Image+Example"
+  alt="Example network image rendered from the img tag"
+>
 <h2 id="section2">Section 2</h2>
 <p>Intro paragraph for chapter 1.</p>
 <p>
