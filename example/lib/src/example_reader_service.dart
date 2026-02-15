@@ -2,32 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import 'example_demo_content.dart';
-
-class ChapterPagination {
-  const ChapterPagination({required this.current, required this.total});
-
-  final int current;
-  final int total;
-}
-
-class ExampleImageData {
-  const ExampleImageData({
-    required this.src,
-    required this.alt,
-    required this.isRemote,
-    required this.resolvedEpubPath,
-    required this.effectiveUrl,
-  });
-
-  final String src;
-  final String? alt;
-  final bool isRemote;
-  final String? resolvedEpubPath;
-  final String? effectiveUrl;
-}
+import 'helpers/example_demo_content.dart';
+import 'helpers/example_reader_chapters.dart';
+import 'helpers/example_reader_images.dart';
+import 'helpers/example_reader_links.dart';
+import 'helpers/example_reader_models.dart';
+import 'helpers/example_reader_pagination.dart';
+import 'helpers/example_reader_paths.dart';
 
 class ExampleReaderService extends ChangeNotifier {
   ExampleReaderService() {
@@ -36,11 +18,22 @@ class ExampleReaderService extends ChangeNotifier {
 
   final HtmlReaderController readerController = HtmlReaderController();
   final EpubCfiParser _cfiParser = const EpubCfiParser();
+  final ExampleReaderPaths _paths = const ExampleReaderPaths();
+  late final ExampleReaderChapters _chapters = ExampleReaderChapters(
+    paths: _paths,
+  );
+  late final ExampleReaderImages _images = ExampleReaderImages(paths: _paths);
+  final ExampleReaderLinks _links = const ExampleReaderLinks();
 
   static const int columnsPerPage = 2;
   static const int _preloadThresholdColumnPages = 2;
+  static const Duration _pageAnimationDuration = Duration(milliseconds: 300);
+  static const Curve _pageAnimationCurve = Curves.easeInOut;
+  static const ExampleReaderPagination _pagination = ExampleReaderPagination(
+    columnsPerPage: columnsPerPage,
+  );
 
-  String _currentDocumentPath = ExampleDemoContent.initialDocumentPath;
+  String _currentChapterPath = ExampleDemoContent.initialDocumentPath;
   final List<String> _loadedChapters = <String>[
     ExampleDemoContent.initialDocumentPath,
   ];
@@ -53,40 +46,62 @@ class ExampleReaderService extends ChangeNotifier {
   Completer<void>? _chapterLoadCompleter;
   bool _pendingAdvanceAfterChapterLoad = false;
 
-  String get currentDocumentPath => _currentDocumentPath;
+  String get currentChapterPath => _currentChapterPath;
   int get currentPage => _currentPage;
   int get pageCount => _pageCount;
   bool get canGoPrevious => _currentPage > 0;
   bool get canGoNext =>
       _pageCount > 0 &&
-      (_currentPage < _pageCount - 1 || _nextChapterPath() != null);
+      (_currentPage < _pageCount - 1 ||
+          _chapters.nextChapterPath(
+                activeChapterPath:
+                    _chapterPathForPage(_currentPage) ?? _currentChapterPath,
+                resolveDocument: _paths.resolveDocument,
+              ) !=
+              null);
 
   String get currentHtml => _loadedChapters
       .map((path) => ExampleDemoContent.documents[path] ?? '')
       .join('\n<column-break></column-break>\n');
 
-  ChapterPagination? get chapterPagination => _currentChapterColumnPagination();
+  ChapterPagination? get currentChapterPagination =>
+      _pagination.currentChapterPagination(
+        columnCount: _columnCount,
+        currentSpreadPage: _currentPage,
+        chapterStartColumn: _chapterStartColumn(
+          _chapterPathForPage(_currentPage) ?? _currentChapterPath,
+        ),
+        chapterEndColumn:
+            _chapterEndColumn(
+              _chapterPathForPage(_currentPage) ?? _currentChapterPath,
+            ) ??
+            (_columnCount - 1),
+      );
 
-  void onPreviousPagePressed() {
+  void goToPreviousPage() {
     if (_currentPage <= 0) {
       return;
     }
     readerController.pageController.previousPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: _pageAnimationDuration,
+      curve: _pageAnimationCurve,
     );
   }
 
-  void onNextPagePressed() {
+  void goToNextPage() {
     if (_currentPage < _pageCount - 1) {
       readerController.pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+        duration: _pageAnimationDuration,
+        curve: _pageAnimationCurve,
       );
       return;
     }
 
-    final nextChapterPath = _nextChapterPath();
+    final nextChapterPath = _chapters.nextChapterPath(
+      activeChapterPath:
+          _chapterPathForPage(_currentPage) ?? _currentChapterPath,
+      resolveDocument: _paths.resolveDocument,
+    );
     if (nextChapterPath == null) {
       return;
     }
@@ -94,94 +109,55 @@ class ExampleReaderService extends ChangeNotifier {
     unawaited(_ensureChapterLoaded(nextChapterPath));
   }
 
-  Future<String?> handleReferenceTap(HtmlReference reference) async {
-    final targetDocument = _resolveDocument(reference.path);
-    final hasExplicitPath =
-        reference.path != null && reference.path!.trim().isNotEmpty;
-    final isCrossDocument =
-        hasExplicitPath &&
-        targetDocument != null &&
-        _normalizePath(targetDocument) != _normalizePath(_currentDocumentPath);
+  Future<String?> handleLinkTap(HtmlReference reference) {
+    return _links.handleLinkTap(
+      reference: reference,
+      currentChapterPath: _currentChapterPath,
+      resolvedTargetDocument: _paths.resolveDocument(reference.path),
+      normalizePath: _paths.normalizePath,
+      navigateToChapterFragment: _navigateToChapterFragment,
+      resolveAndNavigateCfi: _resolveAndNavigateCfi,
+      readerController: readerController,
+    );
+  }
 
-    if (isCrossDocument) {
-      await _ensureChapterLoaded(
-        targetDocument,
-        preserveCurrentPosition: false,
-      );
-      final targetFragment =
-          (reference.fragmentId != null && reference.fragmentId!.isNotEmpty)
-          ? reference.fragmentId!
-          : _chapterStartIdForPath(targetDocument);
-      if (targetFragment != null && targetFragment.isNotEmpty) {
-        final resolvedTargetPage = _resolvePageInChapterForFragment(
-          chapterPath: targetDocument,
-          fragmentId: targetFragment,
-        );
-        if (resolvedTargetPage != null) {
-          await readerController.pageController.animateToPage(
-            resolvedTargetPage,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-          return null;
-        }
-        final jumped = await readerController.animateToReference(
-          targetFragment,
-        );
-        if (!jumped) {
-          readerController.jumpToReference(targetFragment);
-        }
-      }
+  Future<int?> _navigateToChapterFragment({
+    required String chapterPath,
+    required String? fragmentId,
+  }) async {
+    await _ensureChapterLoaded(chapterPath, preserveCurrentPosition: false);
+    final targetFragment = (fragmentId != null && fragmentId.isNotEmpty)
+        ? fragmentId
+        : _paths.chapterStartIdForPath(chapterPath);
+    if (targetFragment == null || targetFragment.isEmpty) {
       return null;
     }
 
-    if (reference.fragmentId != null && reference.fragmentId!.isNotEmpty) {
-      await readerController.animateToReference(reference.fragmentId!);
-      return null;
-    }
-
-    if (reference.isCfiLike) {
-      final resolved = await _resolveAndNavigateCfi(reference);
-      if (resolved) {
-        return null;
-      }
-      return 'Unable to resolve CFI target from: ${reference.raw}';
-    }
-
-    final uri = reference.uri;
-    if (uri != null && uri.hasScheme) {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
+    final resolvedTargetPage = _resolvePageInChapterForFragment(
+      chapterPath: chapterPath,
+      fragmentId: targetFragment,
+    );
+    if (resolvedTargetPage != null) {
+      await readerController.pageController.animateToPage(
+        resolvedTargetPage,
+        duration: _pageAnimationDuration,
+        curve: _pageAnimationCurve,
       );
-      if (launched) {
-        return null;
-      }
-      return 'Unable to open URL: $uri';
+      return resolvedTargetPage;
     }
 
-    return 'Unhandled reference: ${reference.raw}';
+    final jumped = await readerController.animateToReference(targetFragment);
+    if (!jumped) {
+      readerController.jumpToReference(targetFragment);
+    }
+    return null;
   }
 
   ExampleImageData resolveImage(String src, String? alt) {
-    final imageUri = Uri.tryParse(src.trim());
-    final isRemote =
-        imageUri != null &&
-        (imageUri.scheme == 'http' || imageUri.scheme == 'https');
-    final resolvedEpubPath = _resolveEpubImagePath(src);
-    final mappedRemoteUrl = resolvedEpubPath == null
-        ? null
-        : ExampleDemoContent.epubImageUrlByPath[_normalizePath(
-            resolvedEpubPath,
-          )];
-    final effectiveUrl = isRemote ? src : mappedRemoteUrl;
-
-    return ExampleImageData(
+    return _images.resolveImage(
       src: src,
       alt: alt,
-      isRemote: isRemote,
-      resolvedEpubPath: resolvedEpubPath,
-      effectiveUrl: effectiveUrl,
+      currentChapterPath: _currentChapterPath,
     );
   }
 
@@ -192,8 +168,8 @@ class ExampleReaderService extends ChangeNotifier {
         _currentPage < count - 1) {
       _pendingAdvanceAfterChapterLoad = false;
       readerController.pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+        duration: _pageAnimationDuration,
+        curve: _pageAnimationCurve,
       );
     }
     notifyListeners();
@@ -237,58 +213,15 @@ class ExampleReaderService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String? _resolveDocument(String? rawPath) {
-    if (rawPath == null || rawPath.isEmpty) {
-      return null;
-    }
-    final normalized = _canonicalPath(rawPath);
-    if (ExampleDemoContent.documents.containsKey(normalized)) {
-      return normalized;
-    }
-    for (final key in ExampleDemoContent.documents.keys) {
-      if (_canonicalPath(key) == normalized) {
-        return key;
-      }
-    }
-    return null;
-  }
-
-  String? _nextChapterPath() {
-    final normalizedCurrentPath = _normalizePath(
-      _chapterPathForPage(_currentPage) ?? _currentDocumentPath,
-    );
-    final canonicalCurrentPath =
-        ExampleDemoContent.canonicalChapterByPath[normalizedCurrentPath] ??
-        normalizedCurrentPath;
-    final normalizedOrder = ExampleDemoContent.chapterOrder.map(_normalizePath);
-    final chapterOrder = normalizedOrder.toList();
-    final currentIndex = chapterOrder.indexOf(canonicalCurrentPath);
-    if (currentIndex == -1 || currentIndex >= chapterOrder.length - 1) {
-      return null;
-    }
-
-    final nextCanonicalPath = chapterOrder[currentIndex + 1];
-    return _resolveDocument(nextCanonicalPath);
-  }
-
-  String? _chapterStartIdForPath(String path) {
-    final canonical = _canonicalPath(path);
-    return ExampleDemoContent.chapterStartIdByPath[canonical];
-  }
-
-  bool _isChapterLoaded(String path) {
-    final normalized = _canonicalPath(path);
-    return _loadedChapters.any(
-      (chapter) => _canonicalPath(chapter) == normalized,
-    );
-  }
-
   String? _chapterPathForPage(int page) {
-    final currentColumn = _currentAbsoluteColumnForSpread(page);
+    final currentColumn = _pagination.currentAbsoluteColumnForSpread(
+      spreadPage: page,
+      columnCount: _columnCount,
+    );
     String? resolvedPath;
     var resolvedStart = -1;
     for (final chapterPath in _loadedChapters) {
-      final startId = _chapterStartIdForPath(chapterPath);
+      final startId = _paths.chapterStartIdForPath(chapterPath);
       if (startId == null) {
         continue;
       }
@@ -312,10 +245,11 @@ class ExampleReaderService extends ChangeNotifier {
     if (chapterPath == null) {
       return false;
     }
-    if (_normalizePath(chapterPath) == _normalizePath(_currentDocumentPath)) {
+    if (_paths.normalizePath(chapterPath) ==
+        _paths.normalizePath(_currentChapterPath)) {
       return false;
     }
-    _currentDocumentPath = chapterPath;
+    _currentChapterPath = chapterPath;
     return true;
   }
 
@@ -324,9 +258,16 @@ class ExampleReaderService extends ChangeNotifier {
       return;
     }
     final activeChapter =
-        _chapterPathForPage(_currentPage) ?? _currentDocumentPath;
-    final nextChapter = _nextChapterPath();
-    if (nextChapter == null || _isChapterLoaded(nextChapter)) {
+        _chapterPathForPage(_currentPage) ?? _currentChapterPath;
+    final nextChapter = _chapters.nextChapterPath(
+      activeChapterPath: activeChapter,
+      resolveDocument: _paths.resolveDocument,
+    );
+    if (nextChapter == null ||
+        _chapters.isChapterLoaded(
+          loadedChapters: _loadedChapters,
+          path: nextChapter,
+        )) {
       return;
     }
 
@@ -335,29 +276,40 @@ class ExampleReaderService extends ChangeNotifier {
       return;
     }
     final remainingColumnPages =
-        chapterEndColumn - _currentAbsoluteColumnForSpread(_currentPage);
+        chapterEndColumn -
+        _pagination.currentAbsoluteColumnForSpread(
+          spreadPage: _currentPage,
+          columnCount: _columnCount,
+        );
     if (remainingColumnPages <= _preloadThresholdColumnPages) {
       unawaited(_ensureChapterLoaded(nextChapter));
     }
   }
 
   int? _chapterEndColumn(String chapterPath) {
-    final normalizedOrder = ExampleDemoContent.chapterOrder.map(_normalizePath);
-    final chapterOrder = normalizedOrder.toList();
-    final normalizedCurrent = _normalizePath(
-      ExampleDemoContent.canonicalChapterByPath[_normalizePath(chapterPath)] ??
-          _normalizePath(chapterPath),
+    final chapterOrder = ExampleDemoContent.chapterOrder
+        .map(_paths.normalizePath)
+        .toList();
+    final normalizedCurrent = _paths.normalizePath(
+      ExampleDemoContent.canonicalChapterByPath[_paths.normalizePath(
+            chapterPath,
+          )] ??
+          _paths.normalizePath(chapterPath),
     );
     final chapterIndex = chapterOrder.indexOf(normalizedCurrent);
     if (chapterIndex < 0 || chapterIndex >= chapterOrder.length - 1) {
       return _columnCount > 0 ? _columnCount - 1 : null;
     }
     final nextCanonical = chapterOrder[chapterIndex + 1];
-    final nextChapterPath = _resolveDocument(nextCanonical);
-    if (nextChapterPath == null || !_isChapterLoaded(nextChapterPath)) {
+    final nextChapterPath = _paths.resolveDocument(nextCanonical);
+    if (nextChapterPath == null ||
+        !_chapters.isChapterLoaded(
+          loadedChapters: _loadedChapters,
+          path: nextChapterPath,
+        )) {
       return _columnCount > 0 ? _columnCount - 1 : null;
     }
-    final nextStartId = _chapterStartIdForPath(nextChapterPath);
+    final nextStartId = _paths.chapterStartIdForPath(nextChapterPath);
     if (nextStartId == null) {
       return _columnCount > 0 ? _columnCount - 1 : null;
     }
@@ -372,8 +324,12 @@ class ExampleReaderService extends ChangeNotifier {
     String chapterPath, {
     bool preserveCurrentPosition = true,
   }) async {
-    final resolved = _resolveDocument(chapterPath);
-    if (resolved == null || _isChapterLoaded(resolved)) {
+    final resolved = _paths.resolveDocument(chapterPath);
+    if (resolved == null ||
+        _chapters.isChapterLoaded(
+          loadedChapters: _loadedChapters,
+          path: resolved,
+        )) {
       return;
     }
     if (_isLoadingAdjacentChapter) {
@@ -402,7 +358,7 @@ class ExampleReaderService extends ChangeNotifier {
   }
 
   int _chapterStartColumn(String chapterPath) {
-    final startId = _chapterStartIdForPath(chapterPath);
+    final startId = _paths.chapterStartIdForPath(chapterPath);
     if (startId == null) {
       return 0;
     }
@@ -413,60 +369,13 @@ class ExampleReaderService extends ChangeNotifier {
     required String chapterPath,
     required String fragmentId,
   }) {
-    final candidates = _bookmarkPageCandidates[fragmentId];
-    if (candidates == null || candidates.isEmpty) {
-      return null;
-    }
-
     final startColumn = _chapterStartColumn(chapterPath);
     final endColumn = _chapterEndColumn(chapterPath) ?? (_columnCount - 1);
-    final startPage = startColumn ~/ columnsPerPage;
-    final endPage = endColumn ~/ columnsPerPage;
-    for (final page in candidates) {
-      if (page >= startPage && page <= endPage) {
-        return page;
-      }
-    }
-    return null;
-  }
-
-  int _currentAbsoluteColumnForSpread(int spreadPage) {
-    if (_columnCount <= 0) {
-      return 0;
-    }
-    final absolute = spreadPage * columnsPerPage;
-    return absolute.clamp(0, _columnCount - 1);
-  }
-
-  ChapterPagination? _currentChapterColumnPagination() {
-    if (_columnCount <= 0) {
-      return null;
-    }
-    final chapterPath =
-        _chapterPathForPage(_currentPage) ?? _currentDocumentPath;
-    final chapterStartColumn = _chapterStartColumn(chapterPath);
-    final chapterEndColumn =
-        _chapterEndColumn(chapterPath) ?? (_columnCount - 1);
-    final totalColumnPages = (chapterEndColumn - chapterStartColumn + 1).clamp(
-      1,
-      _columnCount,
+    return _pagination.resolvePageInChapterForFragment(
+      candidates: _bookmarkPageCandidates[fragmentId],
+      chapterStartColumn: startColumn,
+      chapterEndColumn: endColumn,
     );
-    final currentColumn = _currentAbsoluteColumnForSpread(_currentPage);
-    final currentColumnPage = (currentColumn - chapterStartColumn + 1).clamp(
-      1,
-      totalColumnPages,
-    );
-    return ChapterPagination(
-      current: currentColumnPage,
-      total: totalColumnPages,
-    );
-  }
-
-  String _normalizePath(String value) => value.trim().toLowerCase();
-
-  String _canonicalPath(String value) {
-    final normalized = _normalizePath(value);
-    return ExampleDemoContent.canonicalChapterByPath[normalized] ?? normalized;
   }
 
   Future<bool> _resolveAndNavigateCfi(HtmlReference reference) async {
@@ -482,26 +391,5 @@ class ExampleReaderService extends ChangeNotifier {
       }
     }
     return false;
-  }
-
-  String? _resolveEpubImagePath(String rawSrc) {
-    final src = rawSrc.trim();
-    if (src.isEmpty) {
-      return null;
-    }
-
-    final parsed = Uri.tryParse(src);
-    if (parsed != null && parsed.hasScheme) {
-      return null;
-    }
-
-    final normalizedCurrentPath = _normalizePath(_currentDocumentPath);
-    final baseUri = Uri.parse(
-      normalizedCurrentPath.contains('/')
-          ? normalizedCurrentPath
-          : '/$normalizedCurrentPath',
-    );
-    final resolved = baseUri.resolve(src).path;
-    return resolved.startsWith('/') ? resolved.substring(1) : resolved;
   }
 }
