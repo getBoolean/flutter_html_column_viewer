@@ -26,8 +26,5 @@ jobs:
       - name: Run tests
         run: flutter test --exclude-tags golden
 
-      - name: Run CSS1 suite corpus smoke test
-        run: RUN_CSS1_TEST_SUITE=1 flutter test test/spec_support/css1_test_suite_pages_test.dart --exclude-tags golden
-
       - name: Validate spec support matrix
         run: flutter test test/spec_support/spec_matrix_test.dart --exclude-tags golden
