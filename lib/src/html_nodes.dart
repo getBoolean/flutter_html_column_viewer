@@ -1,7 +1,13 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 typedef HtmlImageBuilder =
     Widget Function(BuildContext context, String src, String? alt);
+
+typedef HtmlImageBytesBuilder =
+    FutureOr<Uint8List?> Function(HtmlImageRef imageRef);
 
 typedef HtmlRefTapCallback = void Function(HtmlReference reference);
 
@@ -84,6 +90,19 @@ double _measureTextHeight(
     maxLines: null,
   )..layout(maxWidth: maxWidth);
   return painter.height;
+}
+
+@immutable
+class HtmlImageRef {
+  const HtmlImageRef({required this.src, this.alt, this.id});
+
+  final String src;
+  final String? alt;
+  final String? id;
+
+  factory HtmlImageRef.fromNode(HtmlImageBlockNode node) {
+    return HtmlImageRef(src: node.src, alt: node.alt, id: node.id);
+  }
 }
 
 @immutable
@@ -334,7 +353,29 @@ class HtmlImageBlockNode extends HtmlBlockNode {
     required double columnWidth,
     required TextStyle baseTextStyle,
   }) {
-    return columnWidth * 0.6;
+    final imageHeight = columnWidth * (9 / 16);
+    final altText = alt?.trim();
+    final altHeight = (altText == null || altText.isEmpty)
+        ? 0.0
+        : _measureTextHeight(
+                altText,
+                style: baseTextStyle.copyWith(
+                  fontStyle: FontStyle.italic,
+                  height: 1.35,
+                ),
+                maxWidth: columnWidth,
+              ) +
+              8;
+    const verticalContainerPadding = 10.0 * 2;
+    const metadataGap = 6.0;
+    const metadataLineHeight = 16.0;
+    const safetyBuffer = 2.0;
+    return imageHeight +
+        altHeight +
+        verticalContainerPadding +
+        metadataGap +
+        metadataLineHeight +
+        safetyBuffer;
   }
 }
 

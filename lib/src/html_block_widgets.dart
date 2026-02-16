@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -11,12 +14,14 @@ class HtmlBlockContext {
     this.headingStyles = const <int, TextStyle>{},
     this.onRefTap,
     this.imageBuilder,
+    this.imageBytesBuilder,
   });
 
   final TextStyle baseStyle;
   final Map<int, TextStyle> headingStyles;
   final HtmlRefTapCallback? onRefTap;
   final HtmlImageBuilder? imageBuilder;
+  final HtmlImageBytesBuilder? imageBytesBuilder;
 
   TextStyle headingStyleFor(int level) {
     return headingStyles[level] ?? _defaultHeadingStyle(baseStyle, level);
@@ -334,7 +339,7 @@ class HtmlTableBlock extends StatelessWidget {
 }
 
 /// Renders [HtmlImageBlockNode]; uses [HtmlBlockContext.imageBuilder] when provided.
-class HtmlImageBlock extends StatelessWidget {
+class HtmlImageBlock extends StatefulWidget {
   const HtmlImageBlock({
     super.key,
     required this.node,
@@ -345,35 +350,175 @@ class HtmlImageBlock extends StatelessWidget {
   final HtmlBlockContext blockContext;
 
   @override
-  Widget build(BuildContext context) {
-    if (blockContext.imageBuilder != null) {
-      return blockContext.imageBuilder!(context, node.src, node.alt);
+  State<HtmlImageBlock> createState() => _HtmlImageBlockState();
+}
+
+class _HtmlImageBlockState extends State<HtmlImageBlock> {
+  Future<Uint8List?>? _bytesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _bytesFuture = _resolveBytesFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant HtmlImageBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nodeChanged =
+        oldWidget.node.src != widget.node.src ||
+        oldWidget.node.alt != widget.node.alt ||
+        oldWidget.node.id != widget.node.id;
+    if (nodeChanged) {
+      _bytesFuture = _resolveBytesFuture();
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Image.network(
-            node.src,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                padding: const EdgeInsets.all(10),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: Text('Unable to load image: ${node.src}'),
-              );
-            },
+  }
+
+  Future<Uint8List?>? _resolveBytesFuture() {
+    final imageBytesBuilder = widget.blockContext.imageBytesBuilder;
+    if (imageBytesBuilder == null) {
+      return null;
+    }
+    final imageRef = HtmlImageRef.fromNode(widget.node);
+    return Future<Uint8List?>.value(imageBytesBuilder(imageRef));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.blockContext.imageBuilder != null) {
+      return widget.blockContext.imageBuilder!(
+        context,
+        widget.node.src,
+        widget.node.alt,
+      );
+    }
+    final imageRef = HtmlImageRef.fromNode(widget.node);
+    final imageUrl = imageRef.src.trim();
+    final altText = imageRef.alt?.trim();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _bytesFuture == null
+                  ? _buildNetworkOrUnavailable(
+                      context: context,
+                      imageUrl: imageUrl,
+                      unavailableLabel: 'Image unavailable: ${imageRef.src}',
+                    )
+                  : FutureBuilder<Uint8List?>(
+                      future: _bytesFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final bytes = snapshot.data;
+                        if (bytes != null && bytes.isNotEmpty) {
+                          return Image.memory(bytes, fit: BoxFit.cover);
+                        }
+                        return _buildUnavailable(
+                          context: context,
+                          unavailableLabel:
+                              'Image unavailable: ${imageRef.src}',
+                        );
+                      },
+                    ),
+            ),
           ),
-        ),
-        if (node.alt != null && node.alt!.trim().isNotEmpty) ...<Widget>[
+          if (altText != null && altText.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              altText,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
-            node.alt!,
-            style: blockContext.baseStyle.copyWith(fontStyle: FontStyle.italic),
+            imageRef.src,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
-      ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkOrUnavailable({
+    required BuildContext context,
+    required String imageUrl,
+    required String unavailableLabel,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final uri = Uri.tryParse(imageUrl);
+    final isNetwork =
+        uri != null &&
+        (uri.scheme.toLowerCase() == 'http' ||
+            uri.scheme.toLowerCase() == 'https');
+    if (!isNetwork) {
+      return _buildUnavailable(
+        context: context,
+        unavailableLabel: unavailableLabel,
+      );
+    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) {
+          return child;
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return ColoredBox(
+          color: colorScheme.errorContainer,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'Image failed to load',
+                style: TextStyle(color: colorScheme.onErrorContainer),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUnavailable({
+    required BuildContext context,
+    required String unavailableLabel,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: colorScheme.tertiaryContainer,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            unavailableLabel,
+            style: TextStyle(color: colorScheme.onTertiaryContainer),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
     );
   }
 }

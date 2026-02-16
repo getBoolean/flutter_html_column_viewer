@@ -16,6 +16,7 @@ class HtmlColumnReader extends StatelessWidget {
     this.headingStyles = const <int, TextStyle>{},
     this.onRefTap,
     this.imageBuilder,
+    this.imageBytesBuilder,
     this.parser,
     this.blockBuilder,
     this.controller,
@@ -34,6 +35,7 @@ class HtmlColumnReader extends StatelessWidget {
   final Map<int, TextStyle> headingStyles;
   final HtmlRefTapCallback? onRefTap;
   final HtmlImageBuilder? imageBuilder;
+  final HtmlImageBytesBuilder? imageBytesBuilder;
   final HtmlContentParser? parser;
 
   /// Optional custom builder for blocks. Return null to use the default widget.
@@ -142,6 +144,7 @@ class HtmlColumnReader extends StatelessWidget {
                               headingStyles: headingStyles,
                               onRefTap: onRefTap,
                               imageBuilder: imageBuilder,
+                              imageBytesBuilder: imageBytesBuilder,
                             ),
                             blockBuilder: blockBuilder,
                           ),
@@ -171,7 +174,7 @@ class HtmlColumnReader extends StatelessWidget {
     final columns = <List<HtmlBlockNode>>[];
     var currentColumn = <HtmlBlockNode>[];
     var currentHeight = 0.0;
-    const interBlockSpacing = 8.0;
+    const interBlockSpacing = 12.0;
     final maxHeight = viewportHeight;
 
     for (final block in blocks) {

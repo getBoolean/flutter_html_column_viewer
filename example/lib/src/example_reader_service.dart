@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show NetworkAssetBundle;
 import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
 
 import 'helpers/example_demo_content.dart';
@@ -27,6 +29,7 @@ class ExampleReaderService extends ChangeNotifier {
 
   static const int columnsPerPage = 2;
   static const int _preloadThresholdColumnPages = 2;
+  static const int _imagePreloadThresholdPages = 3;
   static const Duration _pageAnimationDuration = Duration(milliseconds: 300);
   static const Curve _pageAnimationCurve = Curves.easeInOut;
   static const ExampleReaderPagination _pagination = ExampleReaderPagination(
@@ -45,6 +48,11 @@ class ExampleReaderService extends ChangeNotifier {
   bool _isLoadingAdjacentChapter = false;
   Completer<void>? _chapterLoadCompleter;
   bool _pendingAdvanceAfterChapterLoad = false;
+  final Map<String, Future<Uint8List?>> _imageBytesByUrl =
+      <String, Future<Uint8List?>>{};
+  final HtmlContentParser _htmlParser = HtmlContentParser();
+  final Map<String, List<HtmlImageRef>> _chapterImageRefs =
+      <String, List<HtmlImageRef>>{};
 
   String get currentChapterPath => _currentChapterPath;
   int get currentPage => _currentPage;
@@ -161,6 +169,27 @@ class ExampleReaderService extends ChangeNotifier {
     );
   }
 
+  Future<Uint8List?> resolveImageBytes(String src, String? alt) {
+    final image = resolveImage(src, alt);
+    final url = image.effectiveUrl?.trim();
+    if (url == null || url.isEmpty) {
+      return Future<Uint8List?>.value(null);
+    }
+    return _imageBytesByUrl.putIfAbsent(url, () async {
+      try {
+        final byteData = await NetworkAssetBundle(
+          Uri.parse(url),
+        ).load(url).timeout(const Duration(seconds: 8));
+        return byteData.buffer.asUint8List(
+          byteData.offsetInBytes,
+          byteData.lengthInBytes,
+        );
+      } catch (_) {
+        return null;
+      }
+    });
+  }
+
   void onPageCountChanged(int count) {
     _pageCount = count;
     if (_pendingAdvanceAfterChapterLoad &&
@@ -172,6 +201,7 @@ class ExampleReaderService extends ChangeNotifier {
         curve: _pageAnimationCurve,
       );
     }
+    _maybePreloadUpcomingImages();
     notifyListeners();
   }
 
@@ -190,6 +220,7 @@ class ExampleReaderService extends ChangeNotifier {
 
   void onBookmarkPageCandidatesChanged(Map<String, List<int>> candidates) {
     _bookmarkPageCandidates = candidates;
+    _maybePreloadUpcomingImages();
   }
 
   @override
@@ -210,6 +241,7 @@ class ExampleReaderService extends ChangeNotifier {
     _currentPage = newPage;
     _updateCurrentChapterFromPage();
     _maybePreloadNextChapter();
+    _maybePreloadUpcomingImages();
     notifyListeners();
   }
 
@@ -351,6 +383,7 @@ class ExampleReaderService extends ChangeNotifier {
       _isLoadingAdjacentChapter = false;
       _chapterLoadCompleter = null;
       _maybePreloadNextChapter();
+      _maybePreloadUpcomingImages();
       loadCompleter.complete();
     });
 
@@ -391,5 +424,60 @@ class ExampleReaderService extends ChangeNotifier {
       }
     }
     return false;
+  }
+
+  void _maybePreloadUpcomingImages() {
+    if (_pageCount <= 0 || _columnCount <= 0) {
+      return;
+    }
+    final maxPreloadPage = (_currentPage + _imagePreloadThresholdPages).clamp(
+      0,
+      _pageCount - 1,
+    );
+
+    for (final chapterPath in _loadedChapters) {
+      final chapterStartPage =
+          _chapterStartColumn(chapterPath) ~/ columnsPerPage;
+      final chapterEndPage =
+          (_chapterEndColumn(chapterPath) ?? (_columnCount - 1)) ~/
+          columnsPerPage;
+      final chapterIsNear =
+          chapterStartPage <= maxPreloadPage && chapterEndPage >= _currentPage;
+      if (!chapterIsNear) {
+        continue;
+      }
+
+      final imageRefs = _imageRefsForChapter(chapterPath);
+      for (final imageRef in imageRefs) {
+        final imageId = imageRef.id?.trim();
+        if (imageId != null && imageId.isNotEmpty) {
+          final candidatePages = _bookmarkPageCandidates[imageId];
+          if (candidatePages != null && candidatePages.isNotEmpty) {
+            final inPreloadWindow = candidatePages.any(
+              (page) => page >= _currentPage && page <= maxPreloadPage,
+            );
+            if (!inPreloadWindow) {
+              continue;
+            }
+          }
+        }
+        unawaited(resolveImageBytes(imageRef.src, imageRef.alt));
+      }
+    }
+  }
+
+  List<HtmlImageRef> _imageRefsForChapter(String chapterPath) {
+    final resolvedPath = _paths.resolveDocument(chapterPath) ?? chapterPath;
+    final cacheKey = _paths.normalizePath(resolvedPath);
+    return _chapterImageRefs.putIfAbsent(cacheKey, () {
+      final chapterHtml = ExampleDemoContent.documents[resolvedPath] ?? '';
+      if (chapterHtml.isEmpty) {
+        return const <HtmlImageRef>[];
+      }
+      final blocks = _htmlParser.parse(chapterHtml);
+      return List<HtmlImageRef>.unmodifiable(
+        blocks.whereType<HtmlImageBlockNode>().map(HtmlImageRef.fromNode),
+      );
+    });
   }
 }
