@@ -27,7 +27,9 @@ class CssAstAdapter {
       if (openBrace == -1) {
         break;
       }
-      final selectorText = normalized.substring(cursor, openBrace).trim();
+      final selectorText = _normalizeSelectorPrelude(
+        normalized.substring(cursor, openBrace),
+      ).trim();
       final closeBrace = _matchingBrace(normalized, openBrace);
       if (closeBrace == -1) {
         break;
@@ -96,6 +98,13 @@ class CssAstAdapter {
     return rules;
   }
 
+  String _normalizeSelectorPrelude(String prelude) {
+    // Preserve the trailing selector when invalid/ignored semicolon at-rules
+    // (for example late @import) appear before it.
+    final segments = prelude.split(';');
+    return segments.isEmpty ? prelude : segments.last;
+  }
+
   List<CssDeclaration> parseInlineDeclarations(String inlineCss) {
     return _parseDeclarations(inlineCss);
   }
@@ -145,6 +154,11 @@ class CssAstAdapter {
   }
 
   String _stripComments(String css) {
-    return css.replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+    return css
+        // CSS block comments.
+        .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '')
+        // Legacy HTML comment wrappers used inside <style> blocks.
+        .replaceAll('<!--', ' ')
+        .replaceAll('-->', ' ');
   }
 }

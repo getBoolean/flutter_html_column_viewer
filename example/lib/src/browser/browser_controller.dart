@@ -58,6 +58,7 @@ class BrowserController extends ChangeNotifier {
     if (uri == null) {
       return;
     }
+    await _pageService.clearCache(uri);
     await _load(uri, addToHistory: false);
   }
 

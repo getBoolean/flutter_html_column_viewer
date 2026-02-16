@@ -54,6 +54,157 @@ void main() {
       expect(paragraph.style.lineHeight, closeTo(1.8, 0.0001));
     });
 
+    test('does not apply alternate stylesheets by default', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <link rel="stylesheet" href="base.css">
+        <link rel="alternate stylesheet" href="alternate.css">
+        <p class="sample">content</p>
+        ''',
+        externalCssResolver: (href) {
+          if (href == 'base.css') {
+            return '.sample { text-decoration: underline; }';
+          }
+          if (href == 'alternate.css') {
+            return '.sample { text-decoration: none; }';
+          }
+          return null;
+        },
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.decoration, TextDecoration.underline);
+    });
+
+    test('applies leading @import rules from style blocks', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <style>
+          @import url("imported.css");
+        </style>
+        <p class="sample">content</p>
+        ''',
+        externalCssResolver: (href) {
+          if (href == 'imported.css') {
+            return '.sample { color: #00aa00; }';
+          }
+          return null;
+        },
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.color, const Color(0xFF00AA00));
+    });
+
+    test('ignores non-leading @import rules', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <style>
+          @import url("first.css");
+          .sample { color: #111111; }
+          @import url("late.css");
+        </style>
+        <p class="sample">content</p>
+        ''',
+        externalCssResolver: (href) {
+          if (href == 'first.css') {
+            return '.sample { line-height: 1.8; }';
+          }
+          if (href == 'late.css') {
+            return '.sample { color: #ff0000; }';
+          }
+          return null;
+        },
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.color, const Color(0xFF111111));
+      expect(paragraph.style.lineHeight, closeTo(1.8, 0.0001));
+    });
+
+    test('applies @import inside legacy HTML comment wrappers', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <style>
+          <!--
+          @import url("imported.css");
+          -->
+        </style>
+        <p class="sample">content</p>
+        ''',
+        externalCssResolver: (href) {
+          if (href == 'imported.css') {
+            return '.sample { color: #228b22; }';
+          }
+          return null;
+        },
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.color, const Color(0xFF228B22));
+    });
+
+    test('applies li selector styles over inherited ul color', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <style>
+          ul { color: red; }
+          li.three { color: green; }
+          li.threea { color: purple; }
+        </style>
+        <ul>
+          <li class="threea">purple item</li>
+          <li class="three">green item</li>
+        </ul>
+        ''',
+      );
+
+      final list = blocks.whereType<HtmlListBlockNode>().first;
+      final firstItemColor = list.items[0].first.style.color;
+      final secondItemColor = list.items[1].first.style.color;
+      expect(firstItemColor, Colors.purple);
+      expect(secondItemColor, Colors.green);
+    });
+
+    test('applies selectors wrapped in legacy HTML comment tokens', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <style>
+          <!--
+          p.six { color: green; }
+          -->
+        </style>
+        <p class="six">green paragraph</p>
+        ''',
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.color, Colors.green);
+    });
+
+    test('keeps parsing selectors after ignored non-leading @import', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '''
+        <style>
+          p.before { color: black; }
+          @import url("late.css");
+          p.six { color: green; }
+        </style>
+        <p class="six">green paragraph</p>
+        ''',
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.color, Colors.green);
+    });
+
     test('parses typography and spacing properties', () {
       final parser = HtmlContentParser();
       final blocks = parser.parse('''

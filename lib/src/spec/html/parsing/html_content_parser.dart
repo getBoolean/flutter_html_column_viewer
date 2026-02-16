@@ -190,14 +190,19 @@ class HtmlContentParser {
       for (final li in node.children.where(
         (child) => _tagName(child) == 'li',
       )) {
-        final itemSegments = _parseInlineNodes(li.nodes, mergedStyle, rules);
+        final liStyle = _resolveElementStyle(
+          node: li,
+          inheritedStyle: mergedStyle,
+          rules: rules,
+        );
+        final itemSegments = _parseInlineNodes(li.nodes, liStyle, rules);
         if (itemSegments.isNotEmpty) {
           items.add(itemSegments);
         }
         for (final child in li.children.where(
           (child) => _tagName(child) == 'ul' || _tagName(child) == 'ol',
         )) {
-          _parseNodeIntoBlocks(child, mergedStyle, out, rules);
+          _parseNodeIntoBlocks(child, liStyle, out, rules);
         }
       }
       if (items.isNotEmpty) {
@@ -593,9 +598,8 @@ class HtmlContentParser {
 
     if (externalCssResolver != null) {
       for (final link in fragment.querySelectorAll('link')) {
-        final rel = (_attribute(link, const <String>['rel']) ?? '')
-            .toLowerCase();
-        if (!rel.contains('stylesheet')) {
+        final rel = _attribute(link, const <String>['rel']);
+        if (!_isPreferredStylesheetRel(rel)) {
           continue;
         }
         final href = _cleanAttribute(_attribute(link, const <String>['href']));
@@ -604,7 +608,13 @@ class HtmlContentParser {
         }
         final css = externalCssResolver(href);
         if (css != null && css.trim().isNotEmpty) {
-          styleSheets.add(css);
+          styleSheets.add(
+            _expandLeadingCssImports(
+              css,
+              externalCssResolver: externalCssResolver,
+              activeImports: <String>{href},
+            ),
+          );
         }
       }
     }
@@ -612,7 +622,13 @@ class HtmlContentParser {
     for (final styleElement in fragment.querySelectorAll('style')) {
       final css = styleElement.text;
       if (css.trim().isNotEmpty) {
-        styleSheets.add(css);
+        styleSheets.add(
+          _expandLeadingCssImports(
+            css,
+            externalCssResolver: externalCssResolver,
+            activeImports: <String>{},
+          ),
+        );
       }
     }
 
@@ -628,4 +644,162 @@ class HtmlContentParser {
     }
     return rules;
   }
+
+  bool _isPreferredStylesheetRel(String? relRaw) {
+    final rel = relRaw?.trim().toLowerCase();
+    if (rel == null || rel.isEmpty) {
+      return false;
+    }
+    final relTokens = rel.split(RegExp(r'\s+'));
+    return relTokens.contains('stylesheet') &&
+        !relTokens.contains('alternate');
+  }
+
+  String _expandLeadingCssImports(
+    String css, {
+    required String? Function(String href)? externalCssResolver,
+    required Set<String> activeImports,
+  }) {
+    if (externalCssResolver == null || css.trim().isEmpty) {
+      return css;
+    }
+
+    final directives = _parseLeadingImportDirectives(css);
+    if (directives.isEmpty) {
+      return css;
+    }
+
+    final buffer = StringBuffer();
+    for (final directive in directives.directives) {
+      final href = directive.href.trim();
+      if (href.isEmpty || activeImports.contains(href)) {
+        continue;
+      }
+      final importedCss = externalCssResolver(href);
+      if (importedCss == null || importedCss.trim().isEmpty) {
+        continue;
+      }
+      activeImports.add(href);
+      buffer.writeln(
+        _expandLeadingCssImports(
+          importedCss,
+          externalCssResolver: externalCssResolver,
+          activeImports: activeImports,
+        ),
+      );
+      activeImports.remove(href);
+    }
+    buffer.write(css.substring(directives.consumedOffset));
+    return buffer.toString();
+  }
+
+  _ImportParseResult _parseLeadingImportDirectives(String css) {
+    var offset = 0;
+    final directives = <_CssImportDirective>[];
+    while (offset < css.length) {
+      offset = _skipCssWhitespaceAndComments(css, offset);
+      if (offset >= css.length) {
+        break;
+      }
+      if (_startsWithIgnoreCase(css, offset, '@charset')) {
+        final statementEnd = css.indexOf(';', offset);
+        if (statementEnd < 0) {
+          break;
+        }
+        offset = statementEnd + 1;
+        continue;
+      }
+      if (!_startsWithIgnoreCase(css, offset, '@import')) {
+        break;
+      }
+      final statementEnd = css.indexOf(';', offset);
+      if (statementEnd < 0) {
+        break;
+      }
+      final statement = css.substring(offset, statementEnd + 1);
+      final href = _extractImportHref(statement);
+      if (href != null && href.isNotEmpty) {
+        directives.add(_CssImportDirective(href));
+      }
+      offset = statementEnd + 1;
+    }
+    return _ImportParseResult(
+      directives: directives,
+      consumedOffset: directives.isEmpty ? 0 : offset,
+    );
+  }
+
+  int _skipCssWhitespaceAndComments(String css, int start) {
+    var offset = start;
+    while (offset < css.length) {
+      if (offset + 4 <= css.length && css.substring(offset, offset + 4) == '<!--') {
+        offset += 4;
+        continue;
+      }
+      if (offset + 3 <= css.length && css.substring(offset, offset + 3) == '-->') {
+        offset += 3;
+        continue;
+      }
+      final current = css.codeUnitAt(offset);
+      if (current == 0x2f &&
+          offset + 1 < css.length &&
+          css.codeUnitAt(offset + 1) == 0x2a) {
+        final commentEnd = css.indexOf('*/', offset + 2);
+        if (commentEnd < 0) {
+          return css.length;
+        }
+        offset = commentEnd + 2;
+        continue;
+      }
+      if (current == 0x20 ||
+          current == 0x09 ||
+          current == 0x0a ||
+          current == 0x0d ||
+          current == 0x0c) {
+        offset += 1;
+        continue;
+      }
+      break;
+    }
+    return offset;
+  }
+
+  bool _startsWithIgnoreCase(String text, int offset, String needle) {
+    if (offset + needle.length > text.length) {
+      return false;
+    }
+    final segment = text.substring(offset, offset + needle.length);
+    return segment.toLowerCase() == needle.toLowerCase();
+  }
+
+  String? _extractImportHref(String importStatement) {
+    final urlMatch = RegExp(
+      '@import\\s+url\\(\\s*(["\\\']?)([^)"\\\']+)\\1\\s*\\)',
+      caseSensitive: false,
+    ).firstMatch(importStatement);
+    if (urlMatch != null) {
+      return urlMatch.group(2)?.trim();
+    }
+
+    final quotedMatch = RegExp(
+      '@import\\s+(["\\\'])([^"\\\']+)\\1',
+      caseSensitive: false,
+    ).firstMatch(importStatement);
+    return quotedMatch?.group(2)?.trim();
+  }
+}
+
+class _ImportParseResult {
+  const _ImportParseResult({required this.directives, required this.consumedOffset});
+
+  final List<_CssImportDirective> directives;
+  final int consumedOffset;
+
+  bool get isEmpty => directives.isEmpty;
+}
+
+class _CssImportDirective {
+  const _CssImportDirective(this.href);
+
+  final String href;
 }
