@@ -20,6 +20,51 @@ class MainApp extends StatelessWidget {
   }
 }
 
+class ExampleReaderView extends StatelessWidget {
+  const ExampleReaderView({
+    super.key,
+    required this.service,
+    required this.onMessage,
+    required this.onImageTap,
+  });
+
+  final ExampleReaderService service;
+  final ValueChanged<String> onMessage;
+  final HtmlImageTapCallback onImageTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return HtmlColumnReader(
+      controller: service.readerController,
+      columnsPerPage: ExampleReaderService.columnsPerPage,
+      html: service.currentHtml,
+      externalCss: service.currentExternalCss,
+      externalCssResolver: service.resolveExternalCss,
+      onRefTap: _onRefTap,
+      onImageTap: onImageTap,
+      imageBytesBuilder: _buildImageBytes,
+      onPageCountChanged: service.onPageCountChanged,
+      onColumnCountChanged: service.onColumnCountChanged,
+      onBookmarkColumnIndexChanged: service.onBookmarkColumnIndexChanged,
+      onBookmarkPageCandidatesChanged: service.onBookmarkPageCandidatesChanged,
+    );
+  }
+
+  void _onRefTap(HtmlReference reference) {
+    unawaited(
+      service.handleLinkTap(reference).then((message) {
+        if (message != null && message.isNotEmpty) {
+          onMessage(message);
+        }
+      }),
+    );
+  }
+
+  Future<Uint8List?> _buildImageBytes(HtmlImageRef imageRef) {
+    return service.resolveImageBytes(imageRef.src, imageRef.alt);
+  }
+}
+
 class ExamplePage extends StatefulWidget {
   const ExamplePage({super.key});
 
@@ -123,51 +168,6 @@ class _ExamplePageState extends State<ExamplePage> {
         );
       },
     );
-  }
-}
-
-class ExampleReaderView extends StatelessWidget {
-  const ExampleReaderView({
-    super.key,
-    required this.service,
-    required this.onMessage,
-    required this.onImageTap,
-  });
-
-  final ExampleReaderService service;
-  final ValueChanged<String> onMessage;
-  final HtmlImageTapCallback onImageTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return HtmlColumnReader(
-      controller: service.readerController,
-      columnsPerPage: ExampleReaderService.columnsPerPage,
-      html: service.currentHtml,
-      externalCss: service.currentExternalCss,
-      externalCssResolver: service.resolveExternalCss,
-      onRefTap: _onRefTap,
-      onImageTap: onImageTap,
-      imageBytesBuilder: _buildImageBytes,
-      onPageCountChanged: service.onPageCountChanged,
-      onColumnCountChanged: service.onColumnCountChanged,
-      onBookmarkColumnIndexChanged: service.onBookmarkColumnIndexChanged,
-      onBookmarkPageCandidatesChanged: service.onBookmarkPageCandidatesChanged,
-    );
-  }
-
-  void _onRefTap(HtmlReference reference) {
-    unawaited(
-      service.handleLinkTap(reference).then((message) {
-        if (message != null && message.isNotEmpty) {
-          onMessage(message);
-        }
-      }),
-    );
-  }
-
-  Future<Uint8List?> _buildImageBytes(HtmlImageRef imageRef) {
-    return service.resolveImageBytes(imageRef.src, imageRef.alt);
   }
 }
 

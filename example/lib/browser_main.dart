@@ -26,6 +26,65 @@ class BrowserExampleApp extends StatelessWidget {
   }
 }
 
+class ExampleBrowserView extends StatelessWidget {
+  const ExampleBrowserView({
+    super.key,
+    required this.controller,
+    required this.onMessage,
+  });
+
+  final BrowserController controller;
+  final ValueChanged<String> onMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller.loading && controller.html.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (controller.html.isEmpty) {
+      return const Center(child: Text('Enter a URL to load HTML.'));
+    }
+
+    return Stack(
+      children: <Widget>[
+        HtmlScrollableReader(
+          html: controller.html,
+          textStyle: Theme.of(context).textTheme.bodyMedium,
+          externalCssResolver: controller.resolveExternalCss,
+          onMessage: onMessage,
+          onRefTap: (reference, {required scrollToFragment}) {
+            return controller.openReference(
+              reference,
+              scrollToFragment: scrollToFragment,
+            );
+          },
+          imageBuilder: (context, src, alt) {
+            final imageUri = controller.resolveImageUri(src);
+            if (imageUri == null ||
+                !(imageUri.scheme == 'http' || imageUri.scheme == 'https')) {
+              return _MissingImagePlaceholder(src: src, alt: alt);
+            }
+            return Image.network(
+              imageUri.toString(),
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  _MissingImagePlaceholder(src: src, alt: alt),
+            );
+          },
+        ),
+        if (controller.loading)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+      ],
+    );
+  }
+}
+
 class BrowserExamplePage extends StatefulWidget {
   const BrowserExamplePage({super.key});
 
@@ -62,7 +121,7 @@ class _BrowserExamplePageState extends State<BrowserExamplePage> {
               if (_controller.error != null)
                 _BrowserError(error: _controller.error!),
               Expanded(
-                child: _BrowserBody(
+                child: ExampleBrowserView(
                   controller: _controller,
                   onMessage: _showMessage,
                 ),
@@ -131,61 +190,6 @@ class BrowserToolbar extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BrowserBody extends StatelessWidget {
-  const _BrowserBody({required this.controller, required this.onMessage});
-
-  final BrowserController controller;
-  final ValueChanged<String> onMessage;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = this.controller;
-    if (controller.loading && controller.html.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (controller.html.isEmpty) {
-      return const Center(child: Text('Enter a URL to load HTML.'));
-    }
-
-    return Stack(
-      children: <Widget>[
-        HtmlScrollableReader(
-          html: controller.html,
-          textStyle: Theme.of(context).textTheme.bodyMedium,
-          externalCssResolver: controller.resolveExternalCss,
-          onMessage: onMessage,
-          onRefTap: (reference, {required scrollToFragment}) {
-            return controller.openReference(
-              reference,
-              scrollToFragment: scrollToFragment,
-            );
-          },
-          imageBuilder: (context, src, alt) {
-            final imageUri = controller.resolveImageUri(src);
-            if (imageUri == null ||
-                !(imageUri.scheme == 'http' || imageUri.scheme == 'https')) {
-              return _MissingImagePlaceholder(src: src, alt: alt);
-            }
-            return Image.network(
-              imageUri.toString(),
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) =>
-                  _MissingImagePlaceholder(src: src, alt: alt),
-            );
-          },
-        ),
-        if (controller.loading)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: LinearProgressIndicator(minHeight: 2),
-          ),
-      ],
     );
   }
 }
