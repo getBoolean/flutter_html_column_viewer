@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Theme;
+import 'package:flutter/material.dart' show Theme, SelectionArea;
 import 'package:flutter/widgets.dart';
 
 import '../spec/html/rendering/html_block_widgets.dart';
@@ -180,10 +180,11 @@ class HtmlColumnReader extends StatelessWidget {
         );
       },
     );
+    final selectableContent = SelectionArea(child: content);
     if (documentBackgroundColor == null) {
-      return content;
+      return selectableContent;
     }
-    return ColoredBox(color: documentBackgroundColor, child: content);
+    return ColoredBox(color: documentBackgroundColor, child: selectableContent);
   }
 
   List<List<HtmlBlockNode>> _partitionIntoColumns(

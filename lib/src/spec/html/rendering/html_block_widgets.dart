@@ -147,7 +147,8 @@ class HtmlTextBlock extends StatelessWidget {
     );
     final nowrap = node.style.whiteSpace == HtmlWhiteSpace.nowrap;
 
-    Widget content = RichText(
+    Widget content = _buildSelectableRichText(
+      context: context,
       textAlign: node.style.textAlign ?? TextAlign.start,
       softWrap: !nowrap,
       text: TextSpan(style: effectiveStyle, children: spans),
@@ -210,7 +211,8 @@ class HtmlListBlock extends StatelessWidget {
       children: List<Widget>.generate(node.items.length, (index) {
         final bullet = _markerForIndex(index);
         final segments = node.items[index];
-        final itemText = RichText(
+        final itemText = _buildSelectableRichText(
+          context: context,
           textAlign: textAlign,
           text: TextSpan(
             style: markerStyle,
@@ -218,7 +220,8 @@ class HtmlListBlock extends StatelessWidget {
           ),
         );
         final child = insideMarker
-            ? RichText(
+            ? _buildSelectableRichText(
+                context: context,
                 textAlign: textAlign,
                 text: TextSpan(
                   style: markerStyle,
@@ -647,6 +650,21 @@ class HtmlDividerBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Divider(height: 1);
   }
+}
+
+RichText _buildSelectableRichText({
+  required BuildContext context,
+  required InlineSpan text,
+  TextAlign textAlign = TextAlign.start,
+  bool softWrap = true,
+}) {
+  return RichText(
+    textAlign: textAlign,
+    softWrap: softWrap,
+    text: text,
+    selectionRegistrar: SelectionContainer.maybeOf(context),
+    selectionColor: DefaultSelectionStyle.of(context).selectionColor,
+  );
 }
 
 Widget _applyBlockDecorations({
