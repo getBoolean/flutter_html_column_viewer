@@ -128,12 +128,16 @@ The public API exports this hierarchy via `lib/flutter_html_column_widget.dart`.
 
 ## Example app
 
-The `example/` app shows a full reader with two columns per page, horizontal page swipes, and a variety of HTML elements.
+The `example/lib/main.dart` app shows a full reader with two columns per page, horizontal page swipes, and a variety of HTML elements.
 
-![Example output](docs/example.png)
+![Columns output](docs/columns.png)
+
+The `example/lib/browser_main.dart` app shows a usage of the HTML renderer as a browser and is scrollable vertically.
+
+![Browser output](docs/browser.png)
 
 ---
 
 ## License
 
-See the repository for license details.
+[MIT License](LICENSE)
