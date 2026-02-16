@@ -19,6 +19,7 @@ class HtmlBlockContext {
     this.onImageTap,
     this.imageBuilder,
     this.imageBytesBuilder,
+    this.viewportHeight,
   });
 
   final TextStyle baseStyle;
@@ -27,6 +28,7 @@ class HtmlBlockContext {
   final HtmlImageTapCallback? onImageTap;
   final HtmlImageBuilder? imageBuilder;
   final HtmlImageBytesBuilder? imageBytesBuilder;
+  final double? viewportHeight;
 
   TextStyle headingStyleFor(int level) {
     return headingStyles[level] ?? _defaultHeadingStyle(baseStyle, level);
@@ -490,48 +492,53 @@ class _HtmlImageBlockState extends State<HtmlImageBlock> {
       onImageTap(bytes, imageRef);
     }
 
+    final constrainedImage = _bytesFuture == null
+        ? AspectRatio(
+            aspectRatio: _fallbackAspectRatio,
+            child: _buildNetworkOrUnavailable(
+              context: context,
+              imageUrl: imageUrl,
+              imageRef: imageRef,
+            ),
+          )
+        : FutureBuilder<Uint8List?>(
+            future: _bytesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const AspectRatio(
+                  aspectRatio: _fallbackAspectRatio,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final bytes = snapshot.data;
+              if (bytes != null && bytes.isNotEmpty) {
+                _resolvedBytes = bytes;
+                final aspectRatio =
+                    _decodeAspectRatioFromBytes(bytes) ?? _fallbackAspectRatio;
+                return AspectRatio(
+                  aspectRatio: aspectRatio,
+                  child: Image.memory(bytes, fit: BoxFit.contain),
+                );
+              }
+              _resolvedBytes = null;
+              return AspectRatio(
+                aspectRatio: _fallbackAspectRatio,
+                child: _buildUnavailable(context: context, imageRef: imageRef),
+              );
+            },
+          );
+    final maxImageHeight = widget.blockContext.viewportHeight;
+    final image = maxImageHeight != null && maxImageHeight.isFinite
+        ? ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxImageHeight),
+            child: constrainedImage,
+          )
+        : constrainedImage;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onImageTap == null ? null : handleImageTap,
-      child: _bytesFuture == null
-          ? AspectRatio(
-              aspectRatio: _fallbackAspectRatio,
-              child: _buildNetworkOrUnavailable(
-                context: context,
-                imageUrl: imageUrl,
-                imageRef: imageRef,
-              ),
-            )
-          : FutureBuilder<Uint8List?>(
-              future: _bytesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const AspectRatio(
-                    aspectRatio: _fallbackAspectRatio,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                final bytes = snapshot.data;
-                if (bytes != null && bytes.isNotEmpty) {
-                  _resolvedBytes = bytes;
-                  final aspectRatio =
-                      _decodeAspectRatioFromBytes(bytes) ??
-                      _fallbackAspectRatio;
-                  return AspectRatio(
-                    aspectRatio: aspectRatio,
-                    child: Image.memory(bytes, fit: BoxFit.contain),
-                  );
-                }
-                _resolvedBytes = null;
-                return AspectRatio(
-                  aspectRatio: _fallbackAspectRatio,
-                  child: _buildUnavailable(
-                    context: context,
-                    imageRef: imageRef,
-                  ),
-                );
-              },
-            ),
+      child: image,
     );
   }
 
@@ -558,7 +565,7 @@ class _HtmlImageBlockState extends State<HtmlImageBlock> {
     }
     return Image.network(
       imageUrl,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) {
           return child;

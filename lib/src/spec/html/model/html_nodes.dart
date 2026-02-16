@@ -97,6 +97,23 @@ double _measureTextHeight(
   return painter.height;
 }
 
+double _edgeVertical(EdgeInsets? insets) {
+  if (insets == null) {
+    return 0;
+  }
+  return insets.top + insets.bottom;
+}
+
+double _styleVerticalExtras(HtmlStyleData style) {
+  final resolvedPadding = style.boxStyle?.padding ?? style.padding;
+  final resolvedMargin = style.boxStyle?.margin ?? style.margin;
+  final borderVertical =
+      (style.borderTopWidth ?? 0) + (style.borderBottomWidth ?? 0);
+  return _edgeVertical(resolvedPadding) +
+      _edgeVertical(resolvedMargin) +
+      borderVertical;
+}
+
 @immutable
 class HtmlImageRef {
   const HtmlImageRef({required this.src, this.alt, this.id});
@@ -447,7 +464,9 @@ class HtmlTextBlockNode extends HtmlBlockNode {
       style: effectiveStyle,
       maxWidth: columnWidth,
     );
-    return measured + (headingLevel != null ? 12 : 8);
+    // Matches HtmlBlockquoteBlock's exact vertical margin (8 top + 8 bottom).
+    final blockquoteVerticalMargin = isBlockquote ? 16.0 : 0.0;
+    return measured + blockquoteVerticalMargin + _styleVerticalExtras(style);
   }
 }
 
@@ -485,7 +504,7 @@ class HtmlListBlockNode extends HtmlBlockNode {
           ) +
           6;
     }
-    return total + 10;
+    return total + _styleVerticalExtras(style);
   }
 }
 
@@ -538,7 +557,7 @@ class HtmlTableBlockNode extends HtmlBlockNode {
       }
       total += rowHeight + 16;
     }
-    return total + 2;
+    return total + 2 + _styleVerticalExtras(style);
   }
 }
 

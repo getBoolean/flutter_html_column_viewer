@@ -94,7 +94,7 @@ class HtmlColumnReader extends StatelessWidget {
             ((innerWidth - (columnGap * (columnsPerPage - 1))) / columnsPerPage)
                 .clamp(1.0, double.infinity);
         final viewportHeight = (availableHeight - resolvedPadding.vertical)
-            .clamp(140.0, double.infinity);
+            .clamp(1.0, double.infinity);
 
         final columns = _partitionIntoColumns(
           blocks,
@@ -156,6 +156,7 @@ class HtmlColumnReader extends StatelessWidget {
                               onImageTap: onImageTap,
                               imageBuilder: imageBuilder,
                               imageBytesBuilder: imageBytesBuilder,
+                              viewportHeight: viewportHeight,
                             ),
                             blockBuilder: blockBuilder,
                           ),
@@ -203,11 +204,12 @@ class HtmlColumnReader extends StatelessWidget {
         baseTextStyle: baseStyle,
         viewportHeight: viewportHeight,
       );
-      final projected = currentHeight + estimate + interBlockSpacing;
+      final spacingBefore = currentColumn.isEmpty ? 0.0 : interBlockSpacing;
+      final projected = currentHeight + spacingBefore + estimate;
       if (currentColumn.isNotEmpty && projected > maxHeight) {
         columns.add(currentColumn);
         currentColumn = <HtmlBlockNode>[block];
-        currentHeight = estimate + interBlockSpacing;
+        currentHeight = estimate;
       } else {
         currentColumn.add(block);
         currentHeight = projected;
@@ -311,6 +313,7 @@ class _ColumnWidget extends StatelessWidget {
     return SizedBox(
       height: viewportHeight,
       child: ListView.separated(
+        // physics: const NeverScrollableScrollPhysics(),
         itemCount: blocks.length,
         itemBuilder: (context, index) {
           return HtmlBlockView(
