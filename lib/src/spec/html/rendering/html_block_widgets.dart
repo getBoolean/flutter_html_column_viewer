@@ -5,7 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
-import 'html_nodes.dart';
+import '../model/html_nodes.dart';
 
 /// Shared context passed to all HTML block widgets (styles, callbacks, image builder).
 @immutable
@@ -113,51 +113,111 @@ class HtmlTextBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var effectiveStyle = node.style.applyTo(blockContext.baseStyle);
+    var effectiveStyle = node.style.applyToTextStyle(blockContext.baseStyle);
     if (node.headingLevel != null) {
-      effectiveStyle = blockContext.headingStyleFor(node.headingLevel!);
+      effectiveStyle = node.style.applyToTextStyle(
+        blockContext.headingStyleFor(node.headingLevel!),
+      );
     }
 
     if (node.preformatted) {
-      return _PreformattedBlock(node: node, effectiveStyle: effectiveStyle);
+      final preformatted = _PreformattedBlock(
+        node: node,
+        effectiveStyle: effectiveStyle,
+      );
+      return _applyBlockDecorations(
+        context: context,
+        style: node.style,
+        child: preformatted,
+      );
     }
 
     final spans = _buildSpans(effectiveStyle);
+    final nowrap = node.style.whiteSpace == HtmlWhiteSpace.nowrap;
 
     Widget content = RichText(
       textAlign: node.style.textAlign ?? TextAlign.start,
+      softWrap: !nowrap,
       text: TextSpan(style: effectiveStyle, children: spans),
     );
 
     if (node.isBlockquote) {
       content = _BlockquoteWrapper(child: content);
     }
-    return content;
+    return _applyBlockDecorations(
+      context: context,
+      style: node.style,
+      child: content,
+    );
   }
 
   List<InlineSpan> _buildSpans(TextStyle effectiveStyle) {
     final spans = <InlineSpan>[];
     for (final segment in node.segments) {
-      final segmentStyle = segment.style.applyTo(
+      final segmentStyle = segment.style.applyToTextStyle(
         segment.isCode
             ? effectiveStyle.copyWith(fontFamily: 'monospace')
             : effectiveStyle,
+      );
+      final transformedText = _transformText(
+        segment.text,
+        segment.style.textTransform ?? node.style.textTransform,
       );
 
       if (segment.reference != null && blockContext.onRefTap != null) {
         spans.add(
           TextSpan(
-            text: segment.text,
+            text: transformedText,
             style: segmentStyle,
             recognizer: TapGestureRecognizer()
               ..onTap = () => blockContext.onRefTap!(segment.reference!),
           ),
         );
       } else {
-        spans.add(TextSpan(text: segment.text, style: segmentStyle));
+        spans.add(TextSpan(text: transformedText, style: segmentStyle));
+      }
+    }
+    if ((node.style.textIndent ?? 0) > 0 && spans.isNotEmpty) {
+      final indent = ' ' * (((node.style.textIndent ?? 0) / 4).round().clamp(1, 12));
+      final first = spans.first;
+      if (first is TextSpan) {
+        spans[0] = TextSpan(
+          text: '$indent${first.text ?? ''}',
+          style: first.style,
+          children: first.children,
+          recognizer: first.recognizer,
+          semanticsLabel: first.semanticsLabel,
+          mouseCursor: first.mouseCursor,
+          onEnter: first.onEnter,
+          onExit: first.onExit,
+          locale: first.locale,
+          spellOut: first.spellOut,
+        );
       }
     }
     return spans;
+  }
+
+  String _transformText(String input, HtmlTextTransform? transform) {
+    switch (transform) {
+      case HtmlTextTransform.uppercase:
+        return input.toUpperCase();
+      case HtmlTextTransform.lowercase:
+        return input.toLowerCase();
+      case HtmlTextTransform.capitalize:
+        return input
+            .split(RegExp(r'(\s+)'))
+            .map((token) {
+              if (token.trim().isEmpty) {
+                return token;
+              }
+              return token[0].toUpperCase() + token.substring(1).toLowerCase();
+            })
+            .join();
+      case HtmlTextTransform.none:
+      case null:
+        return input;
+    }
   }
 }
 
@@ -217,42 +277,127 @@ class HtmlListBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textAlign = node.style.textAlign ?? TextAlign.start;
+    final markerStyle = node.style.applyToTextStyle(blockContext.baseStyle);
+    final insideMarker = node.style.listStylePosition == HtmlListStylePosition.inside;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: List<Widget>.generate(node.items.length, (index) {
-        final bullet = node.ordered ? '${index + 1}.' : '\u2022';
+        final bullet = _markerForIndex(index);
         final segments = node.items[index];
+        final itemText = RichText(
+          textAlign: textAlign,
+          text: TextSpan(
+            style: markerStyle,
+            children: segments
+                .map(
+                  (segment) => TextSpan(
+                    text: segment.text,
+                    style: segment.style.applyToTextStyle(markerStyle),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        );
+        final child = insideMarker
+            ? RichText(
+                textAlign: textAlign,
+                text: TextSpan(
+                  style: markerStyle,
+                  children: <InlineSpan>[
+                    TextSpan(text: '$bullet '),
+                    ...segments.map(
+                      (segment) => TextSpan(
+                        text: segment.text,
+                        style: segment.style.applyToTextStyle(markerStyle),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SizedBox(width: 20, child: Text(bullet, style: markerStyle)),
+                  Expanded(child: itemText),
+                ],
+              );
         return Padding(
           padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              SizedBox(
-                width: 20,
-                child: Text(bullet, style: blockContext.baseStyle),
-              ),
-              Expanded(
-                child: RichText(
-                  text: TextSpan(
-                    style: node.style.applyTo(blockContext.baseStyle),
-                    children: segments
-                        .map(
-                          (segment) => TextSpan(
-                            text: segment.text,
-                            style: segment.style.applyTo(
-                              blockContext.baseStyle,
-                            ),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          child: child,
         );
       }),
     );
+  }
+
+  String _markerForIndex(int index) {
+    final type = node.style.listStyleType;
+    if (type == HtmlListStyleType.none) {
+      return '';
+    }
+    if (node.ordered) {
+      switch (type) {
+        case HtmlListStyleType.lowerAlpha:
+        case HtmlListStyleType.lowerLatin:
+          return '${_alpha(index, lower: true)}.';
+        case HtmlListStyleType.upperAlpha:
+        case HtmlListStyleType.upperLatin:
+          return '${_alpha(index, lower: false)}.';
+        case HtmlListStyleType.lowerRoman:
+          return '${_roman(index + 1).toLowerCase()}.';
+        case HtmlListStyleType.upperRoman:
+          return '${_roman(index + 1).toUpperCase()}.';
+        case HtmlListStyleType.decimalLeadingZero:
+          return '${(index + 1).toString().padLeft(2, '0')}.';
+        case HtmlListStyleType.none:
+          return '';
+        default:
+          return '${index + 1}.';
+      }
+    }
+    switch (type) {
+      case HtmlListStyleType.circle:
+        return '\u25E6';
+      case HtmlListStyleType.square:
+        return '\u25AA';
+      case HtmlListStyleType.none:
+        return '';
+      default:
+        return '\u2022';
+    }
+  }
+
+  String _alpha(int index, {required bool lower}) {
+    final value = (index % 26) + 97;
+    final char = String.fromCharCode(value);
+    return lower ? char : char.toUpperCase();
+  }
+
+  String _roman(int number) {
+    final pairs = <MapEntry<int, String>>[
+      const MapEntry<int, String>(1000, 'M'),
+      const MapEntry<int, String>(900, 'CM'),
+      const MapEntry<int, String>(500, 'D'),
+      const MapEntry<int, String>(400, 'CD'),
+      const MapEntry<int, String>(100, 'C'),
+      const MapEntry<int, String>(90, 'XC'),
+      const MapEntry<int, String>(50, 'L'),
+      const MapEntry<int, String>(40, 'XL'),
+      const MapEntry<int, String>(10, 'X'),
+      const MapEntry<int, String>(9, 'IX'),
+      const MapEntry<int, String>(5, 'V'),
+      const MapEntry<int, String>(4, 'IV'),
+      const MapEntry<int, String>(1, 'I'),
+    ];
+    var n = number;
+    final out = StringBuffer();
+    for (final pair in pairs) {
+      while (n >= pair.key) {
+        out.write(pair.value);
+        n -= pair.key;
+      }
+    }
+    return out.toString();
   }
 }
 
@@ -303,11 +448,12 @@ class HtmlTableBlock extends StatelessWidget {
                 child: Text(
                   text,
                   softWrap: true,
+                  textAlign: node.style.textAlign,
                   style: rowIndex == 0 && node.hasHeader
-                      ? blockContext.baseStyle.copyWith(
+                      ? node.style.applyToTextStyle(blockContext.baseStyle).copyWith(
                           fontWeight: FontWeight.w700,
                         )
-                      : blockContext.baseStyle,
+                      : node.style.applyToTextStyle(blockContext.baseStyle),
                 ),
               );
             }),
@@ -316,7 +462,7 @@ class HtmlTableBlock extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
+    final table = LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
         if (maxWidth.isFinite && maxWidth > 0 && maxColumns > 0) {
@@ -337,6 +483,11 @@ class HtmlTableBlock extends StatelessWidget {
           }),
         );
       },
+    );
+    return _applyBlockDecorations(
+      context: context,
+      style: node.style,
+      child: table,
     );
   }
 }
@@ -538,4 +689,39 @@ class HtmlDividerBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Divider(height: 1);
   }
+}
+
+Widget _applyBlockDecorations({
+  required BuildContext context,
+  required HtmlStyleData style,
+  required Widget child,
+}) {
+  Widget current = child;
+  final hasContainerStyle =
+      style.padding != null ||
+      style.blockBackgroundColor != null ||
+      (style.borderLeftWidth ?? 0) > 0;
+  if (hasContainerStyle) {
+    current = Container(
+      padding: style.padding,
+      decoration: BoxDecoration(
+        color: style.blockBackgroundColor,
+        border: (style.borderLeftWidth ?? 0) > 0
+            ? Border(
+                left: BorderSide(
+                  width: style.borderLeftWidth ?? 0,
+                  color:
+                      style.borderLeftColor ?? Theme.of(context).dividerColor,
+                  style: style.borderLeftStyle ?? BorderStyle.solid,
+                ),
+              )
+            : null,
+      ),
+      child: current,
+    );
+  }
+  if (style.margin != null) {
+    current = Padding(padding: style.margin!, child: current);
+  }
+  return current;
 }

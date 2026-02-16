@@ -143,6 +143,8 @@ class ExampleReaderView extends StatelessWidget {
       controller: service.readerController,
       columnsPerPage: ExampleReaderService.columnsPerPage,
       html: service.currentHtml,
+      externalCss: service.currentExternalCss,
+      externalCssResolver: service.resolveExternalCss,
       onRefTap: _onRefTap,
       onImageTap: onImageTap,
       imageBytesBuilder: _buildImageBytes,

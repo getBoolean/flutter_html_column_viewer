@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'html_block_widgets.dart';
-import 'html_content_parser.dart';
-import 'html_nodes.dart';
+import '../spec/html/rendering/html_block_widgets.dart';
+import '../spec/html/parsing/html_content_parser.dart';
+import '../spec/html/model/html_nodes.dart';
 import 'html_reader_controller.dart';
 
 class HtmlColumnReader extends StatelessWidget {
@@ -19,6 +19,8 @@ class HtmlColumnReader extends StatelessWidget {
     this.imageBuilder,
     this.imageBytesBuilder,
     this.parser,
+    this.externalCss,
+    this.externalCssResolver,
     this.blockBuilder,
     this.controller,
     this.onPageCountChanged,
@@ -39,6 +41,8 @@ class HtmlColumnReader extends StatelessWidget {
   final HtmlImageBuilder? imageBuilder;
   final HtmlImageBytesBuilder? imageBytesBuilder;
   final HtmlContentParser? parser;
+  final String? externalCss;
+  final String? Function(String href)? externalCssResolver;
 
   /// Optional custom builder for blocks. Return null to use the default widget.
   final Widget? Function(BuildContext context, HtmlBlockNode block)?
@@ -67,7 +71,11 @@ class HtmlColumnReader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final baseStyle = textStyle ?? Theme.of(context).textTheme.bodyMedium!;
-    final blocks = (parser ?? HtmlContentParser()).parse(html);
+    final blocks = (parser ?? HtmlContentParser()).parse(
+      html,
+      externalCss: externalCss,
+      externalCssResolver: externalCssResolver,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {

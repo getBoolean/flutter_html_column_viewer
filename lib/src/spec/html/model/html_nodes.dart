@@ -112,20 +112,52 @@ class HtmlStyleData {
   const HtmlStyleData({
     this.color,
     this.backgroundColor,
+    this.blockBackgroundColor,
     this.fontSize,
     this.fontWeight,
     this.fontStyle,
+    this.fontFamily,
     this.decoration,
     this.textAlign,
+    this.lineHeight,
+    this.letterSpacing,
+    this.wordSpacing,
+    this.textIndent,
+    this.textTransform,
+    this.whiteSpace,
+    this.margin,
+    this.padding,
+    this.listStyleType,
+    this.listStylePosition,
+    this.listStyleImage,
+    this.borderLeftColor,
+    this.borderLeftWidth,
+    this.borderLeftStyle,
   });
 
   final Color? color;
   final Color? backgroundColor;
+  final Color? blockBackgroundColor;
   final double? fontSize;
   final FontWeight? fontWeight;
   final FontStyle? fontStyle;
+  final String? fontFamily;
   final TextDecoration? decoration;
   final TextAlign? textAlign;
+  final double? lineHeight;
+  final double? letterSpacing;
+  final double? wordSpacing;
+  final double? textIndent;
+  final HtmlTextTransform? textTransform;
+  final HtmlWhiteSpace? whiteSpace;
+  final EdgeInsets? margin;
+  final EdgeInsets? padding;
+  final HtmlListStyleType? listStyleType;
+  final HtmlListStylePosition? listStylePosition;
+  final String? listStyleImage;
+  final Color? borderLeftColor;
+  final double? borderLeftWidth;
+  final BorderStyle? borderLeftStyle;
 
   static const HtmlStyleData empty = HtmlStyleData();
 
@@ -136,22 +168,62 @@ class HtmlStyleData {
     return HtmlStyleData(
       color: other.color ?? color,
       backgroundColor: other.backgroundColor ?? backgroundColor,
+      blockBackgroundColor: other.blockBackgroundColor ?? blockBackgroundColor,
       fontSize: other.fontSize ?? fontSize,
       fontWeight: other.fontWeight ?? fontWeight,
       fontStyle: other.fontStyle ?? fontStyle,
+      fontFamily: other.fontFamily ?? fontFamily,
       decoration: other.decoration ?? decoration,
       textAlign: other.textAlign ?? textAlign,
+      lineHeight: other.lineHeight ?? lineHeight,
+      letterSpacing: other.letterSpacing ?? letterSpacing,
+      wordSpacing: other.wordSpacing ?? wordSpacing,
+      textIndent: other.textIndent ?? textIndent,
+      textTransform: other.textTransform ?? textTransform,
+      whiteSpace: other.whiteSpace ?? whiteSpace,
+      margin: other.margin ?? margin,
+      padding: other.padding ?? padding,
+      listStyleType: other.listStyleType ?? listStyleType,
+      listStylePosition: other.listStylePosition ?? listStylePosition,
+      listStyleImage: other.listStyleImage ?? listStyleImage,
+      borderLeftColor: other.borderLeftColor ?? borderLeftColor,
+      borderLeftWidth: other.borderLeftWidth ?? borderLeftWidth,
+      borderLeftStyle: other.borderLeftStyle ?? borderLeftStyle,
     );
   }
 
-  TextStyle applyTo(TextStyle base) {
+  HtmlStyleData inheritableOnly() {
+    return HtmlStyleData(
+      color: color,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      fontFamily: fontFamily,
+      textAlign: textAlign,
+      lineHeight: lineHeight,
+      letterSpacing: letterSpacing,
+      wordSpacing: wordSpacing,
+      textIndent: textIndent,
+      textTransform: textTransform,
+      whiteSpace: whiteSpace,
+      listStyleType: listStyleType,
+      listStylePosition: listStylePosition,
+      listStyleImage: listStyleImage,
+    );
+  }
+
+  TextStyle applyToTextStyle(TextStyle base) {
     return base.copyWith(
       color: color ?? base.color,
       backgroundColor: backgroundColor ?? base.backgroundColor,
       fontSize: fontSize ?? base.fontSize,
       fontWeight: fontWeight ?? base.fontWeight,
       fontStyle: fontStyle ?? base.fontStyle,
+      fontFamily: fontFamily ?? base.fontFamily,
       decoration: decoration ?? base.decoration,
+      height: lineHeight ?? base.height,
+      letterSpacing: letterSpacing ?? base.letterSpacing,
+      wordSpacing: wordSpacing ?? base.wordSpacing,
     );
   }
 
@@ -162,23 +234,76 @@ class HtmlStyleData {
             runtimeType == other.runtimeType &&
             color == other.color &&
             backgroundColor == other.backgroundColor &&
+            blockBackgroundColor == other.blockBackgroundColor &&
             fontSize == other.fontSize &&
             fontWeight == other.fontWeight &&
             fontStyle == other.fontStyle &&
+            fontFamily == other.fontFamily &&
             decoration == other.decoration &&
-            textAlign == other.textAlign;
+            textAlign == other.textAlign &&
+            lineHeight == other.lineHeight &&
+            letterSpacing == other.letterSpacing &&
+            wordSpacing == other.wordSpacing &&
+            textIndent == other.textIndent &&
+            textTransform == other.textTransform &&
+            whiteSpace == other.whiteSpace &&
+            margin == other.margin &&
+            padding == other.padding &&
+            listStyleType == other.listStyleType &&
+            listStylePosition == other.listStylePosition &&
+            listStyleImage == other.listStyleImage &&
+            borderLeftColor == other.borderLeftColor &&
+            borderLeftWidth == other.borderLeftWidth &&
+            borderLeftStyle == other.borderLeftStyle;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll(<Object?>[
     color,
     backgroundColor,
+    blockBackgroundColor,
     fontSize,
     fontWeight,
     fontStyle,
+    fontFamily,
     decoration,
     textAlign,
-  );
+    lineHeight,
+    letterSpacing,
+    wordSpacing,
+    textIndent,
+    textTransform,
+    whiteSpace,
+    margin,
+    padding,
+    listStyleType,
+    listStylePosition,
+    listStyleImage,
+    borderLeftColor,
+    borderLeftWidth,
+    borderLeftStyle,
+  ]);
+}
+
+enum HtmlTextTransform { capitalize, uppercase, lowercase, none }
+
+enum HtmlWhiteSpace { normal, pre, nowrap, preWrap, preLine }
+
+enum HtmlListStylePosition { inside, outside }
+
+enum HtmlListStyleType {
+  disc,
+  circle,
+  square,
+  decimal,
+  decimalLeadingZero,
+  lowerRoman,
+  upperRoman,
+  lowerLatin,
+  upperLatin,
+  lowerAlpha,
+  upperAlpha,
+  none,
 }
 
 @immutable
@@ -246,13 +371,13 @@ class HtmlTextBlockNode extends HtmlBlockNode {
       6 => 16.0,
       _ => null,
     };
-    final effectiveStyle = style.applyTo(
+    final effectiveStyle = style.applyToTextStyle(
       baseTextStyle.copyWith(
         fontSize: headingSize ?? baseTextStyle.fontSize,
         fontWeight: headingLevel != null
             ? FontWeight.w700
             : baseTextStyle.fontWeight,
-        height: preformatted ? 1.35 : 1.45,
+        height: style.lineHeight ?? (preformatted ? 1.35 : 1.45),
       ),
     );
     final measured = _measureTextHeight(
@@ -285,7 +410,9 @@ class HtmlListBlockNode extends HtmlBlockNode {
   }) {
     var total = 0.0;
     final itemWidth = (columnWidth - 22).clamp(40.0, double.infinity);
-    final itemBaseStyle = style.applyTo(baseTextStyle).copyWith(height: 1.4);
+    final itemBaseStyle = style
+        .applyToTextStyle(baseTextStyle)
+        .copyWith(height: style.lineHeight ?? 1.4);
     for (final item in items) {
       final text = item.map((segment) => segment.text).join().trim();
       total +=
@@ -306,10 +433,12 @@ class HtmlTableBlockNode extends HtmlBlockNode {
     required this.rows,
     super.id,
     this.hasHeader = false,
+    this.style = HtmlStyleData.empty,
   });
 
   final List<List<String>> rows;
   final bool hasHeader;
+  final HtmlStyleData style;
 
   @override
   double estimateHeight({
@@ -334,7 +463,9 @@ class HtmlTableBlockNode extends HtmlBlockNode {
       for (final cell in row) {
         final h = _measureTextHeight(
           cell,
-          style: baseTextStyle.copyWith(height: 1.3),
+          style: style
+              .applyToTextStyle(baseTextStyle)
+              .copyWith(height: style.lineHeight ?? 1.3),
           maxWidth: (colWidth - 16).clamp(1.0, double.infinity),
         );
         if (h > rowHeight) {

@@ -21,6 +21,27 @@ Rendering HTML in Flutter usually means dropping in a `WebView` and losing nativ
 
 ---
 
+## HTML5 and XHTML compatibility
+
+The parser uses a single tolerant HTML5 parsing path (via the `html` package) and is tuned for real-world EPUB/HTML content.
+
+- **HTML5 aligned behavior**
+  - Case-insensitive tag/attribute handling
+  - Support for semantic sectioning tags such as `article`, `section`, `nav`, `aside`, `header`, `footer`, `main`
+  - Consistent handling of void elements like `br`, `img`, `hr`, `wbr`
+- **XHTML-style compatibility (tolerant)**
+  - Accepts XHTML-style self-closing markup (`<br/>`, `<img ... />`, `<hr/>`)
+  - Preserves EPUB-relevant link metadata such as `epub:type` and `role`
+  - Handles common prefixed/case-varied attribute forms in a forgiving way
+
+### Compatibility boundaries
+
+- The package **does not run strict XML/XHTML conformance validation**.
+- It is designed for tolerant parsing and rendering, not checker-grade validation.
+- If strict XML well-formedness enforcement is required, validate content before passing it to this package.
+
+---
+
 ## Installation
 
 Add to your `pubspec.yaml`:
@@ -88,6 +109,20 @@ class ReaderPage extends StatelessWidget {
 | `parser` | `HtmlContentParser?` | Custom parser (advanced) |
 
 `HtmlReference` exposes the raw value and lightweight hints (`path`, `fragmentId`, `isCfiLike`, `epubType`, `role`). CFI values are surfaced but not resolved by this package.
+
+---
+
+## Project hierarchy
+
+The package is organized with a spec-aligned structure:
+
+- `lib/src/spec/html/model/` — HTML node/data model
+- `lib/src/spec/html/parsing/` — HTML and CSS parsing entry points
+- `lib/src/spec/html/rendering/` — HTML block rendering widgets
+- `lib/src/spec/epub/parsing/` — EPUB-specific parsing helpers (CFI)
+- `lib/src/reader/` — reader/pagination/controller layer
+
+The public API exports this hierarchy via `lib/flutter_html_column_viewer.dart`.
 
 ---
 

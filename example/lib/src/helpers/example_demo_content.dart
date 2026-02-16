@@ -7,27 +7,41 @@ class ExampleDemoContent {
     'chapter1.xhtml': chapter1Html,
     'chapter2.xhtml': chapter2Html,
     'chapters/chapter2.xhtml': chapter2Html,
+    'chapter3.xhtml': chapter3Html,
+    'chapters/chapter3.xhtml': chapter3Html,
   };
 
   static const List<String> chapterOrder = <String>[
     'chapter1.xhtml',
     'chapter2.xhtml',
+    'chapter3.xhtml',
   ];
 
   static const Map<String, String> canonicalChapterByPath = <String, String>{
     'chapter1.xhtml': 'chapter1.xhtml',
     'chapter2.xhtml': 'chapter2.xhtml',
     'chapters/chapter2.xhtml': 'chapter2.xhtml',
+    'chapter3.xhtml': 'chapter3.xhtml',
+    'chapters/chapter3.xhtml': 'chapter3.xhtml',
   };
 
   static const Map<String, String> chapterStartIdByPath = <String, String>{
     'chapter1.xhtml': 'top',
     'chapter2.xhtml': 'chapter2-top',
+    'chapter3.xhtml': 'chapter3-top',
   };
 
   static const Map<String, String> epubImageUrlByPath = <String, String>{
     'images/chapter1-illustration.jpg': 'https://picsum.photos/id/1015/640/220',
     'images/chapter2-illustration.jpg': 'https://picsum.photos/id/1025/640/220',
+  };
+
+  static const Map<String, String> styleSheets = <String, String>{
+    'styles/chapter3.css': chapter3ExternalCss,
+  };
+
+  static const Map<String, String> externalCssByChapterPath = <String, String>{
+    'chapter3.xhtml': chapter3ExternalCss,
   };
 }
 
@@ -184,6 +198,10 @@ const String chapter2Html = '''
 You are now in chapter 2.
 Tap <a href="chapter1.xhtml#section3">back to chapter 1 section 3</a>.
 </p>
+<p>
+Continue to the new CSS showcase:
+<a href="chapter3.xhtml#chapter3-top">chapter 3 style demo</a>.
+</p>
 <h2 id="overview">Overview</h2>
 <p>Chapter 2 starts with an overview section.</p>
 <p id="para12">This paragraph is the target for cross-file links.</p>
@@ -191,4 +209,105 @@ Tap <a href="chapter1.xhtml#section3">back to chapter 1 section 3</a>.
 <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
 <p>Vestibulum dignissim neque ac arcu interdum, vel tincidunt velit posuere.</p>
 <p>Curabitur congue, justo ut varius efficitur, neque arcu consequat justo.</p>
+''';
+
+const String chapter3Html = '''
+<h1 id="chapter3-top" style="color:#2e7d32;">Chapter 3: CSS Showcase</h1>
+<p>
+This chapter demonstrates the newly added CSS support:
+inline styles, <code>&lt;style&gt;</code> rules, stylesheet links, cascade, and specificity.
+Back to <a href="chapter1.xhtml#supported-html-css">chapter 1 support list</a>.
+</p>
+
+<style>
+  .demo-scope {
+    color: #37474f;
+    font-family: "Roboto";
+    line-height: 1.55;
+  }
+  p.demo-scope {
+    margin: 8px 0;
+    padding: 6px 10px;
+    background-color: rgba(232, 245, 233, 0.8);
+  }
+  #specificity-target {
+    color: #6a1b9a;
+  }
+  .specificity-note {
+    color: #ef6c00;
+  }
+  ul.pretty-list {
+    list-style-type: square;
+    list-style-position: inside;
+  }
+  .caps {
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+</style>
+
+<link rel="stylesheet" href="styles/chapter3.css">
+
+<h2 id="cascade">Cascade and specificity</h2>
+<p id="specificity-target" class="demo-scope specificity-note" style="color:#1565c0;">
+  This paragraph resolves color from inline style, overriding ID and class rules.
+</p>
+<p class="demo-scope specificity-note">
+  This paragraph resolves color from the class selector in the style block.
+</p>
+<p class="demo-scope">
+  This paragraph inherits demo-scope typography and block styling.
+</p>
+
+<h2 id="typography">Typography and spacing</h2>
+<p class="demo-box">
+  External stylesheet applies block background, padding, margins, border-left, and line-height.
+</p>
+<p class="demo-indent">
+  This paragraph demonstrates text indentation and line-height adjustments from external CSS.
+</p>
+<p class="caps">
+  transformed text sample using text-transform and letter spacing
+</p>
+<p class="demo-preline">
+  This line has extra      spaces.
+  And this line break is preserved by white-space: pre-line.
+</p>
+
+<h2 id="lists">List style and marker behavior</h2>
+<ul class="pretty-list demo-scope">
+  <li>Square marker using list-style-type</li>
+  <li>Inside marker using list-style-position</li>
+  <li>Inherited typography from parent scope</li>
+</ul>
+<ol class="numbered-list">
+  <li>Roman markers from external stylesheet</li>
+  <li>Second list item</li>
+  <li>Third list item</li>
+</ol>
+''';
+
+const String chapter3ExternalCss = '''
+.demo-box {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background-color: hsl(188, 52%, 94%);
+  border-left: 4px solid #00838f;
+  line-height: 1.7;
+}
+
+.demo-indent {
+  text-indent: 20px;
+  line-height: 1.65;
+}
+
+.demo-preline {
+  white-space: pre-line;
+  word-spacing: 2px;
+}
+
+ol.numbered-list {
+  list-style-type: upper-roman;
+  list-style-position: outside;
+}
 ''';

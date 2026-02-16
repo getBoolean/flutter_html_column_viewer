@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'html_nodes.dart';
+import '../spec/html/model/html_nodes.dart';
 
 /// Controller for programmatic navigation in [HtmlColumnReader].
 ///

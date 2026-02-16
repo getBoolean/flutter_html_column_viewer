@@ -72,6 +72,21 @@ class ExampleReaderService extends ChangeNotifier {
       .map((path) => ExampleDemoContent.documents[path] ?? '')
       .join('\n<column-break></column-break>\n');
 
+  String? get currentExternalCss {
+    final css = _loadedChapters
+        .map((path) {
+          final canonical = _paths.canonicalPath(path);
+          return ExampleDemoContent.externalCssByChapterPath[canonical];
+        })
+        .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
+        .toList(growable: false);
+    if (css.isEmpty) {
+      return null;
+    }
+    return css.join('\n');
+  }
+
   ChapterPagination? get currentChapterPagination =>
       _pagination.currentChapterPagination(
         columnCount: _columnCount,
@@ -188,6 +203,11 @@ class ExampleReaderService extends ChangeNotifier {
         return null;
       }
     });
+  }
+
+  String? resolveExternalCss(String href) {
+    final normalized = _paths.normalizePath(href);
+    return ExampleDemoContent.styleSheets[normalized];
   }
 
   void onPageCountChanged(int count) {
@@ -474,7 +494,12 @@ class ExampleReaderService extends ChangeNotifier {
       if (chapterHtml.isEmpty) {
         return const <HtmlImageRef>[];
       }
-      final blocks = _htmlParser.parse(chapterHtml);
+      final blocks = _htmlParser.parse(
+        chapterHtml,
+        externalCss: ExampleDemoContent.externalCssByChapterPath[
+            _paths.canonicalPath(resolvedPath)],
+        externalCssResolver: resolveExternalCss,
+      );
       return List<HtmlImageRef>.unmodifiable(
         blocks.whereType<HtmlImageBlockNode>().map(HtmlImageRef.fromNode),
       );

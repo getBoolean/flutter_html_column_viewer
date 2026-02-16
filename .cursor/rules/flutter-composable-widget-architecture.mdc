@@ -1,0 +1,50 @@
+---
+description: Keep Flutter files focused with composable widgets and clear MVC/data boundaries
+alwaysApply: true
+---
+
+# Flutter Composable Widget + Architecture Rule
+
+Write small, focused files by composing widgets and respecting architecture boundaries.
+
+## Keep UI files focused
+
+- Prefer many small widgets over one large widget tree; extract sections into private widgets when a `build()` method gets crowded.
+- A widget file should primarily do UI composition, layout, and simple UI conditionals.
+- Keep business/data logic out of widgets; call a controller action instead.
+
+## Enforce layer boundaries (MVC + data layer)
+
+- **View (widgets):** render UI and forward user events.
+- **Controller:** handle UI flow, transform repository data for the view, and expose actions/callbacks.
+- **Repository:** source of truth, caching/error/retry/refresh logic, map service output to domain models.
+- **Service:** API/platform/file access only; no app state.
+
+## Composable widget checklist
+
+- If one widget handles multiple responsibilities (layout + parsing + state orchestration), split it.
+- Reuse presentational widgets for repeated UI patterns.
+- Keep constructor inputs explicit and minimal.
+- Keep public widget APIs stable; move complexity behind smaller internal widgets or controllers.
+
+## Example
+
+```dart
+// ❌ BAD: UI + business logic mixed in one large widget
+class ReaderScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // fetch/parse/cache/mutate state directly in UI
+    return Column(children: [/* huge mixed tree */]);
+  }
+}
+
+// ✅ GOOD: Composed UI; logic in controller/repository/service layers
+class ReaderView extends StatelessWidget {
+  final ReaderController controller;
+  const ReaderView({super.key, required this.controller});
+  @override
+  Widget build(BuildContext context) =>
+      Column(children: [ReaderToolbar(controller: controller), ReaderPage(controller: controller)]);
+}
+```
