@@ -15,6 +15,7 @@ class HtmlColumnReader extends StatelessWidget {
     this.textStyle,
     this.headingStyles = const <int, TextStyle>{},
     this.onRefTap,
+    this.onImageTap,
     this.imageBuilder,
     this.imageBytesBuilder,
     this.parser,
@@ -34,6 +35,7 @@ class HtmlColumnReader extends StatelessWidget {
   final TextStyle? textStyle;
   final Map<int, TextStyle> headingStyles;
   final HtmlRefTapCallback? onRefTap;
+  final HtmlImageTapCallback? onImageTap;
   final HtmlImageBuilder? imageBuilder;
   final HtmlImageBytesBuilder? imageBytesBuilder;
   final HtmlContentParser? parser;
@@ -143,6 +145,7 @@ class HtmlColumnReader extends StatelessWidget {
                               baseStyle: baseStyle,
                               headingStyles: headingStyles,
                               onRefTap: onRefTap,
+                              onImageTap: onImageTap,
                               imageBuilder: imageBuilder,
                               imageBytesBuilder: imageBytesBuilder,
                             ),

@@ -59,6 +59,7 @@ class _ExamplePageState extends State<ExamplePage> {
                 child: ExampleReaderView(
                   service: _service,
                   onMessage: _showMessage,
+                  onImageTap: _showImagePreview,
                 ),
               ),
               ExampleBottomControls(
@@ -83,6 +84,49 @@ class _ExamplePageState extends State<ExamplePage> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
+
+  void _showImagePreview(Uint8List bytes, HtmlImageRef imageRef) {
+    if (!mounted) {
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return Dialog.fullscreen(
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            appBar: AppBar(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              title: Text(
+                imageRef.alt?.trim().isNotEmpty == true
+                    ? imageRef.alt!
+                    : 'Image preview',
+              ),
+            ),
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                return InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 5,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: Image.memory(
+                      bytes,
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class ExampleReaderView extends StatelessWidget {
@@ -90,10 +134,12 @@ class ExampleReaderView extends StatelessWidget {
     super.key,
     required this.service,
     required this.onMessage,
+    required this.onImageTap,
   });
 
   final ExampleReaderService service;
   final ValueChanged<String> onMessage;
+  final HtmlImageTapCallback onImageTap;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +148,7 @@ class ExampleReaderView extends StatelessWidget {
       columnsPerPage: ExampleReaderService.columnsPerPage,
       html: service.currentHtml,
       onRefTap: _onRefTap,
+      onImageTap: onImageTap,
       imageBytesBuilder: _buildImageBytes,
       onPageCountChanged: service.onPageCountChanged,
       onColumnCountChanged: service.onColumnCountChanged,

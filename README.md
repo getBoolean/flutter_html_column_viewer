@@ -65,6 +65,7 @@ class ReaderPage extends StatelessWidget {
 - **`pagePadding`** — Padding around each page.
 - **`textStyle`** / **`headingStyles`** — Base and heading text styles.
 - **`onRefTap`** — Callback when a reference is tapped (`HtmlReference`).
+- **`onImageTap`** — Callback when an image with resolved bytes is tapped (`Uint8List`, `HtmlImageRef`).
 - **`onBookmarkIndexChanged`** — Callback with `id -> pageIndex` mapping after layout.
 - **`imageBuilder`** — Optional custom builder for `<img>` widgets.
 
@@ -81,6 +82,7 @@ class ReaderPage extends StatelessWidget {
 | `textStyle` | `TextStyle?` | Base text style |
 | `headingStyles` | `Map<int, TextStyle>` | Overrides for h1–h6 |
 | `onRefTap` | `void Function(HtmlReference ref)?` | Reference tap callback |
+| `onImageTap` | `void Function(Uint8List bytes, HtmlImageRef imageRef)?` | Image tap callback for resolved image bytes |
 | `onBookmarkIndexChanged` | `void Function(Map<String, int>)?` | Block ID to page index mapping |
 | `imageBuilder` | `HtmlImageBuilder?` | Custom image widget |
 | `parser` | `HtmlContentParser?` | Custom parser (advanced) |

@@ -13,6 +13,7 @@ class HtmlBlockContext {
     required this.baseStyle,
     this.headingStyles = const <int, TextStyle>{},
     this.onRefTap,
+    this.onImageTap,
     this.imageBuilder,
     this.imageBytesBuilder,
   });
@@ -20,6 +21,7 @@ class HtmlBlockContext {
   final TextStyle baseStyle;
   final Map<int, TextStyle> headingStyles;
   final HtmlRefTapCallback? onRefTap;
+  final HtmlImageTapCallback? onImageTap;
   final HtmlImageBuilder? imageBuilder;
   final HtmlImageBytesBuilder? imageBytesBuilder;
 
@@ -355,6 +357,7 @@ class HtmlImageBlock extends StatefulWidget {
 
 class _HtmlImageBlockState extends State<HtmlImageBlock> {
   Future<Uint8List?>? _bytesFuture;
+  Uint8List? _resolvedBytes;
 
   @override
   void initState() {
@@ -370,6 +373,7 @@ class _HtmlImageBlockState extends State<HtmlImageBlock> {
         oldWidget.node.alt != widget.node.alt ||
         oldWidget.node.id != widget.node.id;
     if (nodeChanged) {
+      _resolvedBytes = null;
       _bytesFuture = _resolveBytesFuture();
     }
   }
@@ -396,64 +400,80 @@ class _HtmlImageBlockState extends State<HtmlImageBlock> {
     final imageUrl = imageRef.src.trim();
     final altText = imageRef.alt?.trim();
     final colorScheme = Theme.of(context).colorScheme;
+    final onImageTap = widget.blockContext.onImageTap;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _bytesFuture == null
-                  ? _buildNetworkOrUnavailable(
-                      context: context,
-                      imageUrl: imageUrl,
-                      unavailableLabel: 'Image unavailable: ${imageRef.src}',
-                    )
-                  : FutureBuilder<Uint8List?>(
-                      future: _bytesFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState != ConnectionState.done) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
+    void handleImageTap() {
+      final bytes = _resolvedBytes;
+      if (bytes == null || bytes.isEmpty || onImageTap == null) {
+        return;
+      }
+      onImageTap(bytes, imageRef);
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onImageTap == null ? null : handleImageTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _bytesFuture == null
+                    ? _buildNetworkOrUnavailable(
+                        context: context,
+                        imageUrl: imageUrl,
+                        unavailableLabel: 'Image unavailable: ${imageRef.src}',
+                      )
+                    : FutureBuilder<Uint8List?>(
+                        future: _bytesFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState !=
+                              ConnectionState.done) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          final bytes = snapshot.data;
+                          if (bytes != null && bytes.isNotEmpty) {
+                            _resolvedBytes = bytes;
+                            return Image.memory(bytes, fit: BoxFit.cover);
+                          }
+                          _resolvedBytes = null;
+                          return _buildUnavailable(
+                            context: context,
+                            unavailableLabel:
+                                'Image unavailable: ${imageRef.src}',
                           );
-                        }
-                        final bytes = snapshot.data;
-                        if (bytes != null && bytes.isNotEmpty) {
-                          return Image.memory(bytes, fit: BoxFit.cover);
-                        }
-                        return _buildUnavailable(
-                          context: context,
-                          unavailableLabel:
-                              'Image unavailable: ${imageRef.src}',
-                        );
-                      },
-                    ),
+                        },
+                      ),
+              ),
             ),
-          ),
-          if (altText != null && altText.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 8),
+            if (altText != null && altText.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                altText,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+              ),
+            ],
+            const SizedBox(height: 6),
             Text(
-              altText,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+              imageRef.src,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
             ),
           ],
-          const SizedBox(height: 6),
-          Text(
-            imageRef.src,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-        ],
+        ),
       ),
     );
   }

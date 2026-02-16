@@ -10,6 +10,8 @@ typedef HtmlImageBytesBuilder =
     FutureOr<Uint8List?> Function(HtmlImageRef imageRef);
 
 typedef HtmlRefTapCallback = void Function(HtmlReference reference);
+typedef HtmlImageTapCallback =
+    void Function(Uint8List bytes, HtmlImageRef imageRef);
 
 @immutable
 class HtmlReference {
