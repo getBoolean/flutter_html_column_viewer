@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show NetworkAssetBundle;
-import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
+import 'package:flutter_html_column_widget/flutter_html_column_widget.dart';
 
 import 'helpers/example_demo_content.dart';
 import 'helpers/example_reader_chapters.dart';

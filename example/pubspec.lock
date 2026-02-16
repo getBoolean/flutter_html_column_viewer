@@ -86,7 +86,7 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_html_column_viewer:
+  flutter_html_column_widget:
     dependency: "direct main"
     description:
       path: ".."

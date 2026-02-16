@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_html_column_viewer:
+  flutter_html_column_widget:
     path: ../
   flutter_inappwebview: 6.2.0-beta.3
   html: ^0.15.6

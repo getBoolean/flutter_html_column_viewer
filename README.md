@@ -1,4 +1,4 @@
-# flutter_html_column_viewer
+# flutter_html_column_widget
 
 **HTML in columns — built entirely with Flutter widgets.** No WebView, no platform views. Parse HTML, flow it into a paged multi-column layout, and swipe through pages like a magazine.
 
@@ -6,7 +6,7 @@
 
 ## Why this package?
 
-Rendering HTML in Flutter usually means dropping in a `WebView` and losing native scrolling, theming, and control. **flutter_html_column_viewer** takes a different approach: it parses HTML and CSS (using `html` and `csslib`) and builds a **pure Flutter** widget tree. Text, headings, lists, tables, and images become `Text`, `RichText`, `Table`, and `Image` widgets. Content is laid out in **columns** with a fixed **columns per page**; users swipe horizontally to move to the next page of continued content. Ideal for article readers, documentation, or any app where you want HTML content that feels native and performant.
+Rendering HTML in Flutter usually means dropping in a `WebView` and losing native scrolling, theming, and control. **flutter_html_column_widget** takes a different approach: it parses HTML and CSS (using `html` and `csslib`) and builds a **pure Flutter** widget tree. Text, headings, lists, tables, and images become `Text`, `RichText`, `Table`, and `Image` widgets. Content is laid out in **columns** with a fixed **columns per page**; users swipe horizontally to move to the next page of continued content. Ideal for article readers, documentation, or any app where you want HTML content that feels native and performant.
 
 ---
 
@@ -48,7 +48,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter_html_column_viewer: ^0.0.1
+  flutter_html_column_widget: ^0.0.1
 ```
 
 ---
@@ -57,7 +57,7 @@ dependencies:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
+import 'package:flutter_html_column_widget/flutter_html_column_widget.dart';
 
 class ReaderPage extends StatelessWidget {
   const ReaderPage({super.key});
@@ -122,7 +122,7 @@ The package is organized with a spec-aligned structure:
 - `lib/src/spec/epub/parsing/` — EPUB-specific parsing helpers (CFI)
 - `lib/src/reader/` — reader/pagination/controller layer
 
-The public API exports this hierarchy via `lib/flutter_html_column_viewer.dart`.
+The public API exports this hierarchy via `lib/flutter_html_column_widget.dart`.
 
 ---
 

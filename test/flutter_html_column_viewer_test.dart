@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
-import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
+import 'package:flutter_html_column_widget/flutter_html_column_widget.dart';
 
 void main() {
   test('parser extracts blocks with css styles', () {

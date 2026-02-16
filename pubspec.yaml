@@ -1,7 +1,7 @@
-name: flutter_html_column_viewer
+name: flutter_html_column_widget
 description: "A new Flutter package project."
 version: 0.0.1
-homepage: https://github.com/getBoolean/flutter_html_column_viewer
+homepage: https://github.com/getBoolean/flutter_html_column_widget
 
 environment:
   sdk: ^3.11.0
