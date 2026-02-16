@@ -19,4 +19,24 @@ void main() {
     expect(warnings, isNotEmpty);
     expect(warnings.any((w) => w.code == 'unsupported-property'), isTrue);
   });
+
+  test('does not log unsupported warning for font-variant', () {
+    final warnings = <HtmlCssWarning>[];
+    final diagnostics = HtmlCssDiagnostics(onWarning: warnings.add);
+    final parser = HtmlContentParser(
+      styleParser: CssStyleParser(diagnostics: diagnostics),
+    );
+
+    parser.parse('''
+      <style>
+        p { font-variant: small-caps; }
+      </style>
+      <p>Hello</p>
+    ''');
+
+    expect(
+      warnings.where((w) => w.property == 'font-variant'),
+      isEmpty,
+    );
+  });
 }

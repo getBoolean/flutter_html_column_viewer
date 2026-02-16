@@ -87,6 +87,7 @@ class HtmlTextStyleSpec {
     this.fontSize,
     this.fontWeight,
     this.fontStyle,
+    this.fontVariant,
     this.fontFamily,
     this.decoration,
     this.textAlign,
@@ -101,6 +102,7 @@ class HtmlTextStyleSpec {
   final double? fontSize;
   final FontWeight? fontWeight;
   final FontStyle? fontStyle;
+  final HtmlFontVariant? fontVariant;
   final String? fontFamily;
   final TextDecoration? decoration;
   final TextAlign? textAlign;
@@ -109,3 +111,5 @@ class HtmlTextStyleSpec {
   final double? wordSpacing;
   final double? textIndent;
 }
+
+enum HtmlFontVariant { normal, smallCaps }

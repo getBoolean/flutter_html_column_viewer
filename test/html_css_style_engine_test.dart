@@ -89,6 +89,16 @@ void main() {
       expect(paragraph.style.borderLeftColor, const Color(0xFF333333));
     });
 
+    test('parses font-variant small-caps', () {
+      final parser = HtmlContentParser();
+      final blocks = parser.parse(
+        '<p style="font-variant: small-caps">hello</p>',
+      );
+
+      final paragraph = blocks.whereType<HtmlTextBlockNode>().first;
+      expect(paragraph.style.fontVariant, HtmlFontVariant.smallCaps);
+    });
+
     test('supports important precedence in cascade', () {
       final parser = HtmlContentParser();
       final blocks = parser.parse('''

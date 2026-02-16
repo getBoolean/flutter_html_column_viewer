@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'html_style_data.dart';
@@ -153,6 +154,7 @@ class HtmlStyleData {
     this.fontSize,
     this.fontWeight,
     this.fontStyle,
+    this.fontVariant,
     this.fontFamily,
     this.decoration,
     this.textAlign,
@@ -190,6 +192,7 @@ class HtmlStyleData {
   final double? fontSize;
   final FontWeight? fontWeight;
   final FontStyle? fontStyle;
+  final HtmlFontVariant? fontVariant;
   final String? fontFamily;
   final TextDecoration? decoration;
   final TextAlign? textAlign;
@@ -233,6 +236,7 @@ class HtmlStyleData {
       fontSize: other.fontSize ?? fontSize,
       fontWeight: other.fontWeight ?? fontWeight,
       fontStyle: other.fontStyle ?? fontStyle,
+      fontVariant: other.fontVariant ?? fontVariant,
       fontFamily: other.fontFamily ?? fontFamily,
       decoration: other.decoration ?? decoration,
       textAlign: other.textAlign ?? textAlign,
@@ -271,6 +275,7 @@ class HtmlStyleData {
       fontSize: fontSize,
       fontWeight: fontWeight,
       fontStyle: fontStyle,
+      fontVariant: fontVariant,
       fontFamily: fontFamily,
       textAlign: textAlign,
       lineHeight: lineHeight,
@@ -293,6 +298,10 @@ class HtmlStyleData {
       fontSize: fontSize ?? base.fontSize,
       fontWeight: fontWeight ?? base.fontWeight,
       fontStyle: fontStyle ?? base.fontStyle,
+      fontFeatures: _resolveFontFeatures(
+        base.fontFeatures,
+        fontVariant,
+      ),
       fontFamily: fontFamily ?? base.fontFamily,
       decoration: decoration ?? base.decoration,
       height: lineHeight ?? base.height,
@@ -312,6 +321,7 @@ class HtmlStyleData {
             fontSize == other.fontSize &&
             fontWeight == other.fontWeight &&
             fontStyle == other.fontStyle &&
+            fontVariant == other.fontVariant &&
             fontFamily == other.fontFamily &&
             decoration == other.decoration &&
             textAlign == other.textAlign &&
@@ -350,6 +360,7 @@ class HtmlStyleData {
     fontSize,
     fontWeight,
     fontStyle,
+    fontVariant,
     fontFamily,
     decoration,
     textAlign,
@@ -379,6 +390,24 @@ class HtmlStyleData {
     boxStyle,
     textStyle,
   ]);
+}
+
+List<FontFeature>? _resolveFontFeatures(
+  List<FontFeature>? base,
+  HtmlFontVariant? variant,
+) {
+  if (variant == null) {
+    return base;
+  }
+  final existing = <FontFeature>[...?base];
+  existing.removeWhere((feature) => feature.feature == 'smcp');
+  if (variant == HtmlFontVariant.smallCaps) {
+    existing.add(const FontFeature.enable('smcp'));
+  }
+  if (existing.isEmpty) {
+    return null;
+  }
+  return existing;
 }
 
 enum HtmlTextTransform { capitalize, uppercase, lowercase, none }

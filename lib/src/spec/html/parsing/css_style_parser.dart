@@ -187,6 +187,7 @@ class CssStyleParser {
       fontSize: _parseFontSize(map['font-size']),
       fontWeight: _parseFontWeight(map['font-weight']),
       fontStyle: _parseFontStyle(map['font-style']),
+      fontVariant: _parseFontVariant(map['font-variant']),
       fontFamily: _parseFontFamily(map['font-family']),
       decoration: _parseTextDecoration(map['text-decoration']),
       textAlign: _parseTextAlign(map['text-align']),
@@ -279,6 +280,7 @@ class CssStyleParser {
         fontSize: _parseFontSize(map['font-size']),
         fontWeight: _parseFontWeight(map['font-weight']),
         fontStyle: _parseFontStyle(map['font-style']),
+        fontVariant: _parseFontVariant(map['font-variant']),
         fontFamily: _parseFontFamily(map['font-family']),
         decoration: _parseTextDecoration(map['text-decoration']),
         textAlign: _parseTextAlign(map['text-align']),
@@ -374,6 +376,20 @@ class CssStyleParser {
       return FontStyle.normal;
     }
     return null;
+  }
+
+  HtmlFontVariant? _parseFontVariant(String? value) {
+    if (value == null) {
+      return null;
+    }
+    switch (value.trim().toLowerCase()) {
+      case 'normal':
+        return HtmlFontVariant.normal;
+      case 'small-caps':
+        return HtmlFontVariant.smallCaps;
+      default:
+        return null;
+    }
   }
 
   String? _parseFontFamily(String? value) {
@@ -829,6 +845,7 @@ class CssStyleParser {
     'font-size',
     'font-weight',
     'font-style',
+    'font-variant',
     'font-family',
     'text-decoration',
     'text-align',
