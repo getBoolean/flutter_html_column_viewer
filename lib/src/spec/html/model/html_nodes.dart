@@ -104,6 +104,13 @@ double _edgeVertical(EdgeInsets? insets) {
   return insets.top + insets.bottom;
 }
 
+double _edgeHorizontal(EdgeInsets? insets) {
+  if (insets == null) {
+    return 0;
+  }
+  return insets.left + insets.right;
+}
+
 double _styleVerticalExtras(HtmlStyleData style) {
   final resolvedPadding = style.boxStyle?.padding ?? style.padding;
   final resolvedMargin = style.boxStyle?.margin ?? style.margin;
@@ -112,6 +119,16 @@ double _styleVerticalExtras(HtmlStyleData style) {
   return _edgeVertical(resolvedPadding) +
       _edgeVertical(resolvedMargin) +
       borderVertical;
+}
+
+double _styleHorizontalInsets(HtmlStyleData style) {
+  final resolvedPadding = style.boxStyle?.padding ?? style.padding;
+  final resolvedMargin = style.boxStyle?.margin ?? style.margin;
+  final borderHorizontal =
+      (style.borderLeftWidth ?? 0) + (style.borderRightWidth ?? 0);
+  return _edgeHorizontal(resolvedPadding) +
+      _edgeHorizontal(resolvedMargin) +
+      borderHorizontal;
 }
 
 @immutable
@@ -437,8 +454,8 @@ class HtmlTextBlockNode extends HtmlBlockNode {
     required TextStyle baseTextStyle,
     required double viewportHeight,
   }) {
-    final text = plainText.trim();
-    if (text.isEmpty) {
+    final text = preformatted ? plainText : plainText.trim();
+    if (text.trim().isEmpty) {
       return 20;
     }
     final headingSize = switch (headingLevel?.clamp(1, 6)) {
@@ -459,14 +476,30 @@ class HtmlTextBlockNode extends HtmlBlockNode {
         height: style.lineHeight ?? (preformatted ? 1.35 : 1.45),
       ),
     );
+    final preformattedHorizontalInset = preformatted ? 20.0 : 0.0;
+    final preformattedVerticalInset = preformatted ? 20.0 : 0.0;
+    final blockquoteHorizontalInset =
+        isBlockquote ? 12.0 + (style.borderLeftWidth ?? 3.0) : 0.0;
+    final textMaxWidth =
+        (columnWidth -
+                _styleHorizontalInsets(style) -
+                blockquoteHorizontalInset -
+                preformattedHorizontalInset)
+            .clamp(40.0, double.infinity);
+    final measuredStyle = preformatted
+        ? effectiveStyle.copyWith(fontFamily: 'monospace')
+        : effectiveStyle;
     final measured = _measureTextHeight(
       text,
-      style: effectiveStyle,
-      maxWidth: columnWidth,
+      style: measuredStyle,
+      maxWidth: textMaxWidth,
     );
     // Matches HtmlBlockquoteBlock's exact vertical margin (8 top + 8 bottom).
     final blockquoteVerticalMargin = isBlockquote ? 16.0 : 0.0;
-    return measured + blockquoteVerticalMargin + _styleVerticalExtras(style);
+    return measured +
+        preformattedVerticalInset +
+        blockquoteVerticalMargin +
+        _styleVerticalExtras(style);
   }
 }
 
