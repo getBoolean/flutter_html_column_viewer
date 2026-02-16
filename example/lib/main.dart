@@ -7,6 +7,7 @@ import 'package:flutter_html_column_viewer/flutter_html_column_viewer.dart';
 import 'src/example_reader_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MainApp());
 }
 
