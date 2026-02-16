@@ -10,7 +10,6 @@ class BrowserController extends ChangeNotifier {
     : _pageService = pageService;
 
   final BrowserPageService _pageService;
-  final HtmlReaderController readerController = HtmlReaderController();
   final TextEditingController addressController = TextEditingController();
 
   bool _loading = false;
@@ -78,7 +77,10 @@ class BrowserController extends ChangeNotifier {
     await _load(_history[_historyIndex], addToHistory: false);
   }
 
-  Future<String?> openReference(HtmlReference reference) async {
+  Future<String?> openReference(
+    HtmlReference reference, {
+    Future<void> Function(String fragmentId)? scrollToFragment,
+  }) async {
     final raw = reference.raw.trim();
     if (raw.isEmpty) {
       return null;
@@ -89,7 +91,9 @@ class BrowserController extends ChangeNotifier {
       if (fragment == null || fragment.isEmpty) {
         return null;
       }
-      await readerController.animateToReference(fragment);
+      if (scrollToFragment != null) {
+        await scrollToFragment(fragment);
+      }
       return null;
     }
 
@@ -108,11 +112,13 @@ class BrowserController extends ChangeNotifier {
     final requestUri = targetUri.replace(fragment: '');
     await _load(requestUri, addToHistory: true);
     if (fragment != null && fragment.isNotEmpty) {
-      unawaited(
-        Future<void>.delayed(
-          const Duration(milliseconds: 30),
-        ).then((_) => readerController.animateToReference(fragment)),
-      );
+      if (scrollToFragment != null) {
+        unawaited(
+          Future<void>.delayed(
+            const Duration(milliseconds: 30),
+          ).then((_) => scrollToFragment(fragment)),
+        );
+      }
     }
     return null;
   }
@@ -150,7 +156,9 @@ class BrowserController extends ChangeNotifier {
       if (addToHistory) {
         _recordHistory(page.uri);
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('BrowserController load failed for $uri: $error');
+      debugPrintStack(stackTrace: stackTrace);
       _setError('Failed to load $uri: $error', notify: false);
     } finally {
       _loading = false;
@@ -171,6 +179,7 @@ class BrowserController extends ChangeNotifier {
 
   void _setError(String message, {bool notify = true}) {
     _error = message;
+    debugPrint('BrowserController error: $message');
     if (notify) {
       notifyListeners();
     }
@@ -179,7 +188,6 @@ class BrowserController extends ChangeNotifier {
   @override
   void dispose() {
     addressController.dispose();
-    readerController.dispose();
     _pageService.dispose();
     super.dispose();
   }

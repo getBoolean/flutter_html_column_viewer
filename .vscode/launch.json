@@ -5,10 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Dart",
+            "name": "Example Reader Demo",
             "type": "dart",
             "request": "launch",
             "program": "example/lib/main.dart"
+        },
+        {
+            "name": "Browser Demo",
+            "type": "dart",
+            "request": "launch",
+            "program": "example/lib/browser_main.dart"
         }
     ]
 }
