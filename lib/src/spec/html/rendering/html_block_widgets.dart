@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Theme, CircularProgressIndicator, Divider;
+import 'package:flutter/widgets.dart';
 import 'package:image/image.dart' as img;
 
 import '../model/html_nodes.dart';

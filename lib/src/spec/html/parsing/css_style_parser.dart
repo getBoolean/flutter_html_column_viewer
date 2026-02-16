@@ -1,5 +1,6 @@
+import 'package:flutter/material.dart' show Colors;
 import 'package:html/dom.dart' as dom;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../diagnostics/html_css_diagnostics.dart';
 import '../diagnostics/html_css_warning.dart';

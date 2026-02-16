@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui' show FontFeature;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
 import 'html_style_data.dart';
 import 'html_style_provenance.dart';
 import 'html_table_nodes.dart';

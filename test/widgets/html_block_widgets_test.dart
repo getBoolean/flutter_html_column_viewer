@@ -168,8 +168,7 @@ void main() {
       tester,
     ) async {
       final parser = HtmlContentParser();
-      final blocks = parser.parse(
-        '''
+      final blocks = parser.parse('''
         <table border cellspacing="0" cellpadding="3">
           <tr><td colspan="2"><strong>TABLE Testing Section</strong></td></tr>
           <tr>
@@ -177,14 +176,11 @@ void main() {
             <td>This is a much longer table cell that should receive more width.</td>
           </tr>
         </table>
-        ''',
-      );
+        ''');
 
       await tester.pumpWidget(_buildBlocks(blocks));
 
-      final rows = tester.widgetList<Row>(
-        find.byType(Row),
-      );
+      final rows = tester.widgetList<Row>(find.byType(Row));
       final dataRow = rows.firstWhere(
         (row) =>
             row.children.length == 2 &&
@@ -199,8 +195,7 @@ void main() {
       tester,
     ) async {
       final parser = HtmlContentParser();
-      final blocks = parser.parse(
-        '''
+      final blocks = parser.parse('''
         <table>
           <tr>
             <td>
@@ -209,8 +204,7 @@ void main() {
             </td>
           </tr>
         </table>
-        ''',
-      );
+        ''');
 
       await tester.pumpWidget(_buildBlocks(blocks));
 

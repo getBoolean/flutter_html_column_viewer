@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Theme, Colors;
+import 'package:flutter/widgets.dart';
 
 import '../../model/html_nodes.dart';
 import '../../model/html_table_nodes.dart';

@@ -1,6 +1,6 @@
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import 'css_style_parser.dart';
 import 'html_inline_parser.dart';

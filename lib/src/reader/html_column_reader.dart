@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Theme;
+import 'package:flutter/widgets.dart';
 
 import '../spec/html/rendering/html_block_widgets.dart';
 import '../spec/html/parsing/html_content_parser.dart';
